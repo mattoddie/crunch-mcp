@@ -178,7 +178,7 @@ docker run -i --rm \
 To log in for stdio use, run the login command against the same volume once:
 
 ```sh
-docker run -it --rm -p 8976:8976 \
+docker run -it --rm -p 127.0.0.1:8976:8976 \
   -e CRUNCH_CLIENT_ID=your-client-id \
   -v crunch-data:/data \
   ghcr.io/mattoddie/crunch-mcp:latest login
@@ -190,7 +190,7 @@ Tips:
 
 - **Always mount the token volume** (`-v crunch-data:/data`). Without it, each session starts with an empty `/data`, the login is lost when the container exits, and a rotated refresh token is thrown away.
 - **Use the same volume name everywhere.** Docker Compose prefixes volume names with the project name, so the volume from the [compose setup](deployment.md#docker-compose) is usually `crunch-mcp_crunch-data`, not `crunch-data`. Run `docker volume ls` to check.
-- **One session at a time per login.** Each stdio session is a separate server process. They share the token file and pick up each other's changes, but two sessions can still refresh at the same moment. Crunch rotates refresh tokens and revokes the whole login if an old one is reused, so two sessions that overlap (two Claude Code windows, or Claude Desktop and Claude Code together) can end up logging you out. If you use more than one session or client at once, run the [HTTP server](#claude-code) instead and connect them all to it.
+- **Share one token file between sessions.** Each stdio session is a separate server process. Sessions that use the same token file (the same volume, or the same `~/.config/crunch-mcp/tokens.json`) take turns to refresh, using a lock file next to it, and pick up each other's new tokens. Sessions with *separate* token files that started from the same login can't coordinate, and Crunch revokes the whole login when an old refresh token is reused. If you use several clients at once, the [HTTP server](#claude-code) is still the simplest option.
 - **Keep secrets out of the client config.** Pass `-e NAME` without a value so Docker copies the variable from the client's environment, as in the Claude Desktop example. You can also use `--env-file /path/to/crunch.env`.
 - **Always pass `-i` and never `-t`** when serving. A TTY corrupts the MCP message stream. (The `login` command is the exception: it needs `-it` so you can paste the URL.)
 - **Docker on another machine** works too. Set `DOCKER_HOST` in the client's `env`. The volume lives on that machine.

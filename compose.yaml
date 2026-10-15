@@ -1,6 +1,8 @@
-# Copy example.env to .env and fill it in, then:
-#   docker compose run --rm -p 8976:8976 crunch-mcp login   # once, to log in to Crunch
+# Copy example.env to .env and fill it in (MCP_AUTH_TOKEN is required), then:
+#   docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login   # once, to log in to Crunch
 #   docker compose up -d
+# The login port is published on loopback only: if your browser is on another
+# machine, paste the URL from its address bar into the terminal instead.
 services:
   crunch-mcp:
     image: ghcr.io/mattoddie/crunch-mcp:latest
@@ -10,9 +12,14 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
+      # Every request needs MCP_AUTH_TOKEN. If only this machine's clients use
+      # the server, publish it on loopback instead: "127.0.0.1:8080:8080".
       - "8080:8080"
     volumes:
       - crunch-data:/data
+      # For attachments by file_path and downloads with save_to, mount a folder
+      # and set CRUNCH_FILES_DIR=/files in .env:
+      # - ./files:/files
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

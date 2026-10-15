@@ -34,7 +34,7 @@ volumes:
 ```
 
 ```sh
-docker compose run --rm -p 8976:8976 crunch-mcp login   # once, to log in to Crunch
+docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login   # once, to log in to Crunch (login port on loopback only)
 docker compose up -d          # start
 docker compose logs -f        # follow logs
 docker compose ps             # shows "healthy" once the health check passes
@@ -43,7 +43,9 @@ docker compose down           # stop (the volume, and so the login, is kept)
 
 The image has a built-in health check that runs `crunch-mcp healthcheck` every 30 seconds. The image has no shell or `curl`, so the binary checks its own `/health` endpoint. It only shows that the server is running, not that Crunch is reachable or the login is valid.
 
-To listen on one interface only, such as a LAN address or localhost when you use a reverse proxy, change the port mapping to `"192.168.1.20:8080:8080"` or `"127.0.0.1:8080:8080"`.
+To listen on one interface only, such as a LAN address or localhost when you use a reverse proxy, change the port mapping to `"192.168.1.20:8080:8080"` or `"127.0.0.1:8080:8080"`. The server won't start without `MCP_AUTH_TOKEN` (see [MCP transport](configuration.md#mcp-transport)).
+
+To attach files by `file_path` or save downloads with `save_to`, mount a folder for them and point `CRUNCH_FILES_DIR` at it, for example `- ./files:/files` under `volumes` and `CRUNCH_FILES_DIR=/files` in `.env`. Make it writable by UID `65532` for `save_to`. Without it, both are refused.
 
 ## The token volume
 
@@ -53,7 +55,7 @@ The server keeps its Crunch login in `/data/tokens.json`. Crunch replaces the re
 - If you use a bind mount, make the directory writable by the container's user, UID `65532`: `mkdir data && sudo chown 65532:65532 data`.
 - `docker compose down` keeps the volume. `docker compose down -v` deletes it, and with it the login.
 - Back up the volume if you like, but don't **restore** an old copy: its refresh token has been used since, and using it again makes Crunch revoke the login. Log in again instead.
-- Don't point two containers at the same volume, or copy the token file to another server. See [Only one server per login](configuration.md#refresh-tokens-rotate).
+- Don't copy the token file to another server. Containers that share the volume on one Docker host take turns to refresh through a lock file, but one server per login is simplest. See [Refresh tokens rotate](configuration.md#refresh-tokens-rotate).
 
 ## Commands
 
@@ -62,7 +64,7 @@ The image's entrypoint is the `crunch-mcp` binary, so you can run any of its com
 | Command | What it does |
 |---|---|
 | `serve` (the default) | Serves MCP over stdio, or Streamable HTTP when `MCP_TRANSPORT=http` |
-| `login` | Logs in to Crunch in a browser and saves the tokens to `CRUNCH_TOKEN_FILE`. In Docker, add `-p 8976:8976` |
+| `login` | Logs in to Crunch in a browser and saves the tokens to `CRUNCH_TOKEN_FILE`. In Docker, add `-p 127.0.0.1:8976:8976` |
 | `status` | Prints the login status as JSON: where the tokens come from, the scopes, when the access token expires and whether there's a refresh token. Never prints the tokens. |
 | `healthcheck` | Exits with `0` if the HTTP server answers `/health`. Used by the image's `HEALTHCHECK`. |
 | `version` | Prints the version |
@@ -205,7 +207,8 @@ Then:
 export CRUNCH_CLIENT_ID=your-client-id
 crunch-mcp login              # once; opens nothing itself, so copy the URL into a browser
 crunch-mcp                    # stdio, for an MCP client to start
-MCP_TRANSPORT=http MCP_AUTH_TOKEN=... crunch-mcp   # or a long-running HTTP server
+MCP_TRANSPORT=http MCP_AUTH_TOKEN=... crunch-mcp   # or a long-running HTTP server on 127.0.0.1:8080
+                                                   # (set MCP_HTTP_HOST=0.0.0.0 for other machines)
 ```
 
 Without Docker, the token file defaults to `~/.config/crunch-mcp/tokens.json` (or `$XDG_CONFIG_HOME/crunch-mcp/tokens.json`). To run it as a service, a systemd unit that sets these variables in an `EnvironmentFile` and runs `crunch-mcp` as an unprivileged user works well.

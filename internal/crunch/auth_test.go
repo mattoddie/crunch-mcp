@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/mattoddie/crunch-mcp/internal/config"
 	"github.com/mattoddie/crunch-mcp/internal/crunch"
@@ -273,5 +274,65 @@ func TestPicksUpLoginFromAnotherProcess(t *testing.T) {
 	}
 	if got := m.TokenForms[len(m.TokenForms)-1].Get("refresh_token"); got != saved.RefreshToken {
 		t.Errorf("refreshed with %q, want the new login's %q", got, saved.RefreshToken)
+	}
+}
+
+// Two processes sharing a token file (simulated by two clients, whose flocks
+// conflict just as separate processes' do) must not both spend the same
+// rotating refresh token: Crunch would revoke the grant.
+func TestRefreshIsSerialisedAcrossProcesses(t *testing.T) {
+	m := crunchtest.New()
+	defer m.Server.Close()
+	m.On("GET", "/user-details", crunchtest.JSON(map[string]any{}))
+	m.TokenDelay = 200 * time.Millisecond
+	seed := func(c *config.Crunch) { c.RefreshToken = crunchtest.RefreshToken }
+	a, file := newClient(t, m, seed)
+	cfg := m.Config(file)
+	seed(&cfg)
+	b, err := crunch.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	errs := make(chan error, 2)
+	for _, c := range []*crunch.Client{a, b} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- c.Get(context.Background(), "/user-details", nil, nil)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Errorf("request: %v", err)
+		}
+	}
+	if m.TokenRequests != 1 {
+		t.Errorf("token requests: %d, want 1 (the second process should reuse the first one's tokens)", m.TokenRequests)
+	}
+	if _, err := os.Stat(file + ".lock"); err != nil {
+		t.Errorf("lock file: %v", err)
+	}
+}
+
+func TestPendingStateAndErrorsNeedAValidState(t *testing.T) {
+	m := crunchtest.New()
+	defer m.Server.Close()
+	c, _ := newClient(t, m, nil)
+	start, _ := c.Auth.StartLogin()
+	if !c.Auth.PendingState(start.State) || c.Auth.PendingState("") || c.Auth.PendingState("forged") {
+		t.Error("PendingState")
+	}
+	// An error with a state this server didn't issue is not trusted.
+	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?error=access_denied&state=forged"); err == nil || !strings.Contains(err.Error(), "state doesn't match") {
+		t.Errorf("forged error: %v", err)
+	}
+	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?code=abc&state=forged"); err == nil || !strings.Contains(err.Error(), "state doesn't match") {
+		t.Errorf("forged state: %v", err)
+	}
+	if !c.Auth.PendingState(start.State) {
+		t.Error("a forged callback must not use up the real login")
 	}
 }

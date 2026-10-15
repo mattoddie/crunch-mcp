@@ -132,8 +132,12 @@ func registerRecurring(c *Context) {
 		if len(patch) == 0 && len(a.Changes) == 0 {
 			return nil, errors.New("nothing to change")
 		}
+		body := deepMerge(deepMerge(current, patch), a.Changes)
+		if err := c.checkKeepsEntries(current, body); err != nil {
+			return nil, err
+		}
 		var out any
-		return out, cl.Put(ctx, p, nil, deepMerge(deepMerge(current, patch), a.Changes), &out)
+		return out, cl.Put(ctx, p, nil, body, &out)
 	})
 
 	add(c, Def{

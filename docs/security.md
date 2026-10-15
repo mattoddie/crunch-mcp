@@ -33,15 +33,18 @@ The best defence is to limit what's possible, not to rely on the model behaving.
 |---|---|---|
 | OAuth scopes | Requested at login, from your settings | The hard limit. A login with only `read:all` can't change anything, whatever crunch-mcp is configured to allow. Crunch checks every request. |
 | Write switch | `CRUNCH_ALLOW_WRITES` (off by default) | When off, no create or update tools are registered and the raw API tool only allows `GET`. |
-| Delete switch | `CRUNCH_ALLOW_DELETES` (off by default) | When off, no delete tools or payment-removal tools are registered and the raw API tool refuses `DELETE`. |
-| Email switch | `CRUNCH_ALLOW_EMAIL` (off by default) | When off, `crunch_email_invoice` isn't registered and the raw API tool refuses the invoice email endpoint. Nothing reaches your customers. |
+| Delete switch | `CRUNCH_ALLOW_DELETES` (off by default) | When off, no delete tools or payment-removal tools are registered and the raw API tool refuses `DELETE`. Because Crunch deletes the payments and attachments an update leaves out, updates (including `changes` and raw `PUT` requests) must also keep every existing payment and attachment. |
+| Email switch | `CRUNCH_ALLOW_EMAIL` (off by default) | When off, `crunch_email_invoice` isn't registered, the raw API tool refuses email and reminder endpoints, and nothing can turn on Crunch's payment reminders (`send_reminders`, or `sendReminders` in `extra`, `changes` or a raw request body). Nothing reaches your customers. |
+| Canonical raw paths | Built in | The raw API tool only accepts paths in canonical form, without `.` or `..` segments, `//`, `%`, `;`, spaces or control characters, so a path can't be disguised to slip past the switches. |
+| Local files | `CRUNCH_FILES_DIR` (unset by default) | `file_path` and `save_to` only work inside this directory, after resolving `..` and symlinks, and never on the token file or `/run/secrets`. Unset, they're refused. |
 | Toolsets | `CRUNCH_TOOLSETS` | Tools outside the listed toolsets don't exist. The model can't see or call them. |
 | Tool annotations | Built in | Each tool is marked read-only or not. Deletes and issuing an invoice (which is final) are marked destructive, and emailing is marked open-world, so MCP clients can ask for your confirmation. |
 | Server instructions | Built in | With writes on, the model is told to confirm amounts, dates and VAT with you before changing records and before issuing an invoice, and with email on, to show you the recipients and message first. This helps, but it isn't a security boundary. |
 | Careful updates | Built in | Updates fetch the current record and change only what was asked, so payments and attachments aren't lost by accident. |
 | No token output | Built in | No tool returns the access or refresh token. `crunch_auth_status` and `crunch-mcp status` describe the login without showing it. |
-| Endpoint auth | `MCP_AUTH_TOKEN` | Bearer token required on every request. Checked in constant time. |
-| Host allow-list | `MCP_ALLOWED_HOSTS` | Rejects requests with an unexpected `Host` header. This blocks DNS-rebinding attacks from browser pages. |
+| Endpoint auth | `MCP_AUTH_TOKEN` | Bearer token required on every request, checked in constant time. The http transport refuses to start without one unless `MCP_ALLOW_UNAUTHENTICATED=true`. The binary listens on `127.0.0.1` unless `MCP_HTTP_HOST` says otherwise. |
+| Host allow-list | `MCP_ALLOWED_HOSTS` | Rejects requests with an unexpected `Host` header, and browser requests from an `Origin` that isn't on the list. This blocks DNS-rebinding and cross-site attacks from browser pages. |
+| Login listener | Built in | `crunch-mcp login` listens on the loopback address of the redirect URI (publish it as `127.0.0.1:8976:8976` in Docker) and only accepts the redirect carrying the `state` of the login it started. |
 | Container | Built in | A distroless image with no shell, running as a non-root user. The default `compose.yaml` uses a read-only root filesystem, `cap_drop: [ALL]` and `no-new-privileges`. |
 
 ### Why the switches and the scopes both matter
@@ -92,12 +95,13 @@ If you set `CRUNCH_SCOPES=all`, or turn writes off without logging in again, the
 
 ## Network exposure
 
-- Set `MCP_AUTH_TOKEN` to a long random value, even on a home network.
+- Set `MCP_AUTH_TOKEN` to a long random value, even on a home network. The http transport won't start without it unless you set `MCP_ALLOW_UNAUTHENTICATED=true`, which is only for a server behind something else that authenticates every request.
 - Publish the port only where it's needed: on a LAN address, or on `127.0.0.1` behind a reverse proxy.
 - **Never expose port 8080 directly to the internet.** If traffic crosses a network you don't trust, put TLS in front of it. See [Deployment](deployment.md#tls-with-a-reverse-proxy). Prefer a VPN to a public endpoint.
 - Set `MCP_ALLOWED_HOSTS` to the hostname clients use.
 - The server only needs outbound HTTPS to `public-api.crunch.co.uk` and `oauth.crunch.co.uk`. If your firewall allows, restrict it to those.
-- `file_path` (for uploads) and `save_to` (for downloads) read and write files **on the machine running crunch-mcp**, as its user. Anyone who can call the tools can read any file that user can read and upload it to Crunch, or write new files where it can write. In Docker the container's read-only root filesystem and non-root user limit this a lot. Without Docker, run crunch-mcp as an unprivileged user.
+- `file_path` (for uploads) and `save_to` (for downloads) read and write files **on the machine running crunch-mcp**. They're off unless you set `CRUNCH_FILES_DIR`, and then only work inside that directory. Anyone who can call the tools can upload any file in it to Crunch, or add files to it, so point it at a folder used only for receipts and downloads, never at your home directory or the folder holding the token file. Run crunch-mcp as an unprivileged user.
+- Publish the login port only on loopback: `docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login`.
 
 ## Checklist
 
@@ -108,6 +112,7 @@ If you set `CRUNCH_SCOPES=all`, or turn writes off without logging in again, the
 - [ ] The login's scopes match the settings: you logged in again after changing them, and `CRUNCH_SCOPES` is unset.
 - [ ] `CRUNCH_TOOLSETS` lists only the toolsets you use.
 - [ ] The token file is on a persistent volume that only the server can read, and isn't copied anywhere else.
-- [ ] Only one server uses each login.
+- [ ] Only one server uses each login, or the servers that share it share one token file on the same machine.
+- [ ] `CRUNCH_FILES_DIR` is unset, or points at a folder used only for attachments and downloads.
 - [ ] `.env` and secret files aren't committed anywhere. Use `_FILE` variables with Docker secrets where you can.
 - [ ] The image is pinned to a version, and you update when security releases come out (watch the repository's releases).

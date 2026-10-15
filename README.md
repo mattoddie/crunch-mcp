@@ -36,7 +36,7 @@ Ask about your business in plain English. The assistant picks from **70 tools** 
 ## Highlights
 
 - **🐳 Docker-first and tiny.** One image (`ghcr.io/mattoddie/crunch-mcp`) for `linux/amd64` and `linux/arm64`, about 21 MB. It's a single static Go binary on a distroless base, with no shell or package manager, running as a non-root user. It serves Streamable HTTP for a long-running service, or stdio for `docker run -i`. You can also run the binary on its own.
-- **🛡️ Safe by default.** The server is read-only unless you turn on writes. Deleting needs a second switch, and emailing invoices to customers needs a third. Tools that aren't allowed aren't registered at all, and destructive tools, such as deletes and issuing an invoice, are labelled so your MCP client asks before running them.
+- **🛡️ Safe by default.** The server is read-only unless you turn on writes. Deleting needs a second switch, and emailing invoices or payment reminders to customers needs a third. The switches also hold inside request bodies and the raw API tool, and the HTTP server requires a bearer token. Tools that aren't allowed aren't registered at all, and destructive tools, such as deletes and issuing an invoice, are labelled so your MCP client asks before running them.
 - **🔑 Least-privilege login.** It logs in with Crunch's own OAuth 2.0 flow (with PKCE) and asks only for the scopes your settings need. Tokens never appear in tool output.
 - **🔄 Stays logged in.** Crunch rotates refresh tokens, and reusing an old one revokes your login. crunch-mcp saves each new token before using it and never refreshes twice at once, so it keeps working across restarts.
 - **✏️ Careful updates.** Changing an expense or invoice fetches the current record and changes only what you asked, so payments and attachments are never dropped by accident.
@@ -57,13 +57,13 @@ mkdir crunch-mcp && cd crunch-mcp
 curl -fsSLO https://raw.githubusercontent.com/mattoddie/crunch-mcp/main/compose.yaml
 curl -fsSL https://raw.githubusercontent.com/mattoddie/crunch-mcp/main/example.env -o .env
 # Edit .env: set CRUNCH_CLIENT_ID (and CRUNCH_CLIENT_SECRET if you have one)
-# and a random MCP_AUTH_TOKEN (e.g. `openssl rand -hex 32`)
+# and a random MCP_AUTH_TOKEN, which the HTTP server requires (e.g. `openssl rand -hex 32`)
 ```
 
 **3. Log in to Crunch and start the server.**
 
 ```sh
-docker compose run --rm -p 8976:8976 crunch-mcp login   # open the URL it prints and click Allow
+docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login   # open the URL it prints and click Allow
 docker compose up -d
 ```
 
@@ -87,7 +87,7 @@ Out of the box the assistant can look but not touch. To let it make changes, add
 ```sh
 CRUNCH_ALLOW_WRITES=true    # create and update expenses, invoices, clients, suppliers, payments, attachments…
 CRUNCH_ALLOW_DELETES=true   # also allow deleting records and removing payments (needs writes)
-CRUNCH_ALLOW_EMAIL=true     # also allow emailing invoices to customers (needs writes)
+CRUNCH_ALLOW_EMAIL=true     # also allow emailing invoices and payment reminders to customers (needs writes)
 CRUNCH_TOOLSETS=account,reference,expenses,invoices,clients,suppliers   # optional: expose fewer tools
 ```
 
@@ -95,7 +95,7 @@ The login needs matching scopes, so **log in again** after turning on writes or 
 
 ```sh
 docker compose stop
-docker compose run --rm -p 8976:8976 crunch-mcp login
+docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login
 docker compose up -d
 ```
 

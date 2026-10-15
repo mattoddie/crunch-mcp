@@ -216,7 +216,7 @@ type downloadExpenseAttachmentArgs struct {
 	ExpenseID    int64  `json:"expense_id" jsonschema:"Expense ID (see crunch_list_expenses)"`
 	AttachmentID int64  `json:"attachment_id" jsonschema:"Attachment ID within the expense (0, 1, 2...; see crunch_get_expense)"`
 	FileName     string `json:"file_name,omitempty" jsonschema:"Attachment file name (looked up when omitted)"`
-	SaveTo       string `json:"save_to,omitempty" jsonschema:"Also save the file on the machine running this server: a directory (the file keeps its name) or a full path. Existing files are never overwritten."`
+	SaveTo       string `json:"save_to,omitempty" jsonschema:"Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR"`
 }
 
 func summarizeExpenseFull(e Obj) Obj {
@@ -334,7 +334,7 @@ func registerExpenses(c *Context) {
 			body["supplierPayments"] = payments
 		}
 		if len(a.Attachments) > 0 {
-			if body["attachments"], err = attachmentsBody(a.Attachments, 0); err != nil {
+			if body["attachments"], err = attachmentsBody(c, a.Attachments, 0); err != nil {
 				return nil, err
 			}
 		}
@@ -370,7 +370,11 @@ func registerExpenses(c *Context) {
 		if len(patch) == 0 && len(a.Changes) == 0 {
 			return nil, errors.New("nothing to change")
 		}
-		updated, err := putExpense(ctx, a.ExpenseID, deepMerge(deepMerge(current, patch), a.Changes))
+		body := deepMerge(deepMerge(current, patch), a.Changes)
+		if err := c.checkKeepsEntries(current, body); err != nil {
+			return nil, err
+		}
+		updated, err := putExpense(ctx, a.ExpenseID, body)
 		if err != nil {
 			return nil, err
 		}
@@ -461,7 +465,7 @@ func registerExpenses(c *Context) {
 				next = id + 1
 			}
 		}
-		files, err := attachmentsBody(a.Attachments, next)
+		files, err := attachmentsBody(c, a.Attachments, next)
 		if err != nil {
 			return nil, err
 		}
@@ -504,7 +508,7 @@ func registerExpenses(c *Context) {
 		if len(f.Data) == 0 {
 			return nil, errors.New("the attachment is empty; it may have been uploaded without a data: URI prefix")
 		}
-		return fileResult(f, name, fmt.Sprintf("crunch://expenses/%d/attachments/%d", a.ExpenseID, a.AttachmentID), a.SaveTo)
+		return fileResult(c, f, name, fmt.Sprintf("crunch://expenses/%d/attachments/%d", a.ExpenseID, a.AttachmentID), a.SaveTo)
 	})
 
 	add(c, Def{

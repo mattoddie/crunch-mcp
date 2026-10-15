@@ -98,3 +98,48 @@ func TestAllowedHosts(t *testing.T) {
 		t.Errorf("listed host: %d", res.StatusCode)
 	}
 }
+
+func TestOriginMustBeAllowed(t *testing.T) {
+	srv := newServer(t, config.HTTP{AllowedHosts: []string{"mcp.example.com", "app.example.com"}})
+	send := func(origin string) int {
+		req, _ := http.NewRequest(http.MethodPost, srv.URL+"/mcp", strings.NewReader(listTools))
+		req.Host = "mcp.example.com"
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json, text/event-stream")
+		if origin != "" {
+			req.Header.Set("Origin", origin)
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+	for origin, want := range map[string]int{
+		"":                                 200, // not a browser
+		"https://app.example.com":          200,
+		"https://MCP.example.com:8443":     200,
+		"https://evil.example.net":         403,
+		"null":                             403,
+		"https://mcp.example.com.evil.net": 403,
+	} {
+		if got := send(origin); got != want {
+			t.Errorf("Origin %q: %d, want %d", origin, got, want)
+		}
+	}
+}
+
+func TestLargeRequestBodies(t *testing.T) {
+	srv := newServer(t, config.HTTP{AuthToken: "x"})
+	body := func(n int) string {
+		return `{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"pad":"` + strings.Repeat("a", n) + `"}}}`
+	}
+	// A 10 MB attachment is about 13.4 MB as base64; the SDK's own 4 MiB default must not apply.
+	if res := post(t, srv.URL+"/mcp", "x", body(14<<20)); res.StatusCode != 200 {
+		t.Errorf("14 MiB request: %d", res.StatusCode)
+	}
+	if res := post(t, srv.URL+"/mcp", "x", body(17<<20)); res.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("17 MiB request: %d", res.StatusCode)
+	}
+}

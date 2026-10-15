@@ -49,7 +49,7 @@ Edit `.env` and set at least:
 ```sh
 CRUNCH_CLIENT_ID=your-client-id
 CRUNCH_CLIENT_SECRET=                    # only if Crunch gave you one; otherwise leave it empty
-MCP_AUTH_TOKEN=a-long-random-string      # generate one with: openssl rand -hex 32
+MCP_AUTH_TOKEN=a-long-random-string      # required; generate one with: openssl rand -hex 32
 ```
 
 Leave everything else for now. The server starts **read-only**, which is the right way to begin.
@@ -61,7 +61,7 @@ The compose file keeps the login in a Docker volume called `crunch-data`, mounte
 Run the login command once:
 
 ```sh
-docker compose run --rm -p 8976:8976 crunch-mcp login
+docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login
 ```
 
 It prints a long URL and waits:
