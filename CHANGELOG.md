@@ -6,6 +6,8 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-15
+
 This release contains security fixes and several **breaking changes** to defaults; see below before upgrading.
 
 ### Security
@@ -53,5 +55,6 @@ First release. It hasn't yet been tested against a live Crunch account, so expec
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code.
 
-[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mattoddie/crunch-mcp/releases/tag/v0.1.0
