@@ -74,8 +74,20 @@ Commands:
 Configuration is by environment variable; see https://crunch-mcp.mattoddie.dev/docs/configuration/
 `
 
-func load() (*config.Config, *crunch.Client, error) {
-	cfg, err := config.Load(os.LookupEnv)
+// load reads the configuration and creates the client. Only serve uses the MCP transport, so
+// the other commands ignore MCP_TRANSPORT: `login` and `status` work in the http image
+// before MCP_AUTH_TOKEN is set.
+func load(serving bool) (*config.Config, *crunch.Client, error) {
+	env := os.LookupEnv
+	if !serving {
+		env = func(name string) (string, bool) {
+			if name == "MCP_TRANSPORT" || name == "MCP_TRANSPORT_FILE" {
+				return "", false
+			}
+			return os.LookupEnv(name)
+		}
+	}
+	cfg, err := config.Load(env)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -87,7 +99,7 @@ func load() (*config.Config, *crunch.Client, error) {
 }
 
 func serve() error {
-	cfg, client, err := load()
+	cfg, client, err := load(true)
 	if err != nil {
 		return err
 	}
@@ -136,7 +148,7 @@ func serve() error {
 // catches the code. The user can also paste the URL from the browser's
 // address bar, which works when the browser can't reach this machine.
 func login() error {
-	cfg, client, err := load()
+	cfg, client, err := load(false)
 	if err != nil {
 		return err
 	}
@@ -153,17 +165,7 @@ func login() error {
 		if listen == "" {
 			listen = net.JoinHostPort(host, redirect.Port())
 		}
-		mux := http.NewServeMux()
-		mux.HandleFunc(redirect.Path, func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			if r.URL.Query().Get("code") == "" && r.URL.Query().Get("error") == "" {
-				http.Error(w, "No authorisation code in this request.", http.StatusBadRequest)
-				return
-			}
-			fmt.Fprint(w, `<!doctype html><meta charset="utf-8"><title>crunch-mcp</title><body style="font-family:system-ui;padding:3rem;max-width:36rem"><h1>Thanks!</h1><p>crunch-mcp received the authorisation. You can close this tab and go back to the terminal.</p>`)
-			results <- r.URL.String()
-		})
-		srv = &http.Server{Addr: listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+		srv = &http.Server{Addr: listen, Handler: callbackMux(redirect.Path, client.Auth, results), ReadHeaderTimeout: 10 * time.Second}
 		ln, err := net.Listen("tcp", listen)
 		if err != nil {
 			log.Printf("Could not listen on %s for the redirect (%v); paste the URL instead.", listen, err)
@@ -215,8 +217,37 @@ func login() error {
 	return nil
 }
 
+// callbackMux catches the browser's redirect back from Crunch at path. Only a
+// redirect carrying the state of a login this process started (and that hasn't
+// expired) is passed on, so other pages or local processes can't feed it a
+// code or an error.
+func callbackMux(path string, auth *crunch.Auth, results chan<- string) *http.ServeMux {
+	if path == "" {
+		path = "/" // a redirect URI such as http://127.0.0.1:8976 has no path
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if !auth.PendingState(q.Get("state")) {
+			http.Error(w, "This isn't the redirect for the login crunch-mcp is waiting for (the state is missing, doesn't match or has expired).", http.StatusBadRequest)
+			return
+		}
+		if q.Get("code") == "" && q.Get("error") == "" {
+			http.Error(w, "No authorisation code in this request.", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprint(w, `<!doctype html><meta charset="utf-8"><title>crunch-mcp</title><body style="font-family:system-ui;padding:3rem;max-width:36rem"><h1>Thanks!</h1><p>crunch-mcp received the authorisation. You can close this tab and go back to the terminal.</p>`)
+		select {
+		case results <- r.URL.String():
+		default: // a result is already waiting
+		}
+	})
+	return mux
+}
+
 func status() error {
-	_, client, err := load()
+	_, client, err := load(false)
 	if err != nil {
 		return err
 	}

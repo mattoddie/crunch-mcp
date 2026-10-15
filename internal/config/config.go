@@ -2,6 +2,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -36,6 +37,9 @@ type Tools struct {
 	AllowDeletes bool // requires AllowWrites
 	AllowEmail   bool // requires AllowWrites
 	Toolsets     map[string]bool
+	// FilesDir is the only directory that attachment file_path and download save_to may use
+	// (absolute, symlinks resolved). Empty disables both.
+	FilesDir string
 }
 
 // AllTools enables every tool, for documentation and tests.
@@ -220,7 +224,7 @@ func Load(env Env) (*Config, error) {
 	c.Timeout = time.Duration(ms) * time.Millisecond
 
 	h := &cfg.HTTP
-	h.Host = or(get("MCP_HTTP_HOST"), "0.0.0.0")
+	h.Host = or(get("MCP_HTTP_HOST"), "127.0.0.1")
 	if h.Port, err = positiveInt("MCP_HTTP_PORT", get("MCP_HTTP_PORT"), 8080); err != nil {
 		return nil, err
 	}
@@ -230,7 +234,56 @@ func Load(env Env) (*Config, error) {
 			h.AllowedHosts = append(h.AllowedHosts, strings.ToLower(host))
 		}
 	}
+	unauth, err := boolValue("MCP_ALLOW_UNAUTHENTICATED", get("MCP_ALLOW_UNAUTHENTICATED"), false)
+	if err != nil {
+		return nil, err
+	}
+	// An HTTP server without a token would hand every enabled tool to anyone who can reach the port.
+	if cfg.Transport == "http" && h.AuthToken == "" && !unauth {
+		return nil, errors.New("MCP_AUTH_TOKEN is required for the http transport (generate one with: openssl rand -hex 32); set MCP_ALLOW_UNAUTHENTICATED=true only behind something else that authenticates")
+	}
+
+	if t.FilesDir, err = filesDir(get("CRUNCH_FILES_DIR")); err != nil {
+		return nil, err
+	}
 	return cfg, firstErr
+}
+
+// SecretsDir is where Docker and Kubernetes mount secrets. Tools never read or write files there.
+const SecretsDir = "/run/secrets"
+
+// filesDir resolves CRUNCH_FILES_DIR to an absolute path without symlinks. It must be an
+// existing directory, and not /run/secrets or inside it.
+func filesDir(dir string) (string, error) {
+	if dir == "" {
+		return "", nil
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("CRUNCH_FILES_DIR (%s): %w", dir, err)
+	}
+	real, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", fmt.Errorf("CRUNCH_FILES_DIR (%s) must be an existing directory: %w", dir, err)
+	}
+	if st, err := os.Stat(real); err != nil || !st.IsDir() {
+		return "", fmt.Errorf("CRUNCH_FILES_DIR (%s) must be an existing directory", dir)
+	}
+	if Within(real, SecretsDir) {
+		return "", fmt.Errorf("CRUNCH_FILES_DIR (%s) must not be inside %s", dir, SecretsDir)
+	}
+	return real, nil
+}
+
+// Within reports whether path is dir or inside it. Both must be clean and absolute.
+func Within(path, dir string) bool {
+	if path == dir {
+		return true
+	}
+	if !strings.HasSuffix(dir, string(filepath.Separator)) {
+		dir += string(filepath.Separator)
+	}
+	return strings.HasPrefix(path, dir)
 }
 
 func contains(list []string, s string) bool {

@@ -54,7 +54,7 @@ const (
 )
 
 // ErrNotLoggedIn is returned when there are no credentials at all.
-var ErrNotLoggedIn = errors.New("not logged in to Crunch. Run `crunch-mcp login` (or `docker compose run --rm -p 8976:8976 crunch-mcp login`), or use the crunch_auth_start tool")
+var ErrNotLoggedIn = errors.New("not logged in to Crunch. Run `crunch-mcp login` (or `docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login`), or use the crunch_auth_start tool")
 
 func fingerprint(token string) string {
 	sum := sha256.Sum256([]byte(token))
@@ -125,7 +125,8 @@ type Auth struct {
 	staticRejected bool      // CRUNCH_ACCESS_TOKEN is used until the API rejects it
 	fileMod        time.Time // modification time of the token file when last read or written
 
-	refreshMu sync.Mutex // serialises refreshes
+	refreshMu sync.Mutex // serialises refreshes within this process; lockTokens does so across processes
+	lockWarn  sync.Once
 }
 
 // NewAuth loads saved tokens, letting a new CRUNCH_REFRESH_TOKEN take over.
@@ -170,6 +171,25 @@ func (a *Auth) reloadLocked() {
 	a.tokens = t
 	a.lastError = ""
 	a.staticRejected = a.cfg.AccessToken != "" // a newer login replaces a fixed access token
+}
+
+// lockTokens takes the cross-process lock on the token file (<file>.lock). If the lock
+// file can't be created, for example on a read-only volume, it carries on without it.
+func (a *Auth) lockTokens(ctx context.Context) (func(), error) {
+	err := os.MkdirAll(filepath.Dir(a.Store.File), 0o700)
+	if err == nil {
+		var unlock func()
+		if unlock, err = lockFile(ctx, a.Store.File+".lock"); err == nil {
+			return unlock, nil
+		}
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("waiting for another crunch-mcp process to finish refreshing the tokens: %w", ctx.Err())
+		}
+	}
+	a.lockWarn.Do(func() {
+		log.Printf("crunch-mcp: could not lock %s.lock (%v); don't run other crunch-mcp processes with the same token file", a.Store.File, err)
+	})
+	return func() {}, nil
 }
 
 // HasCredentials reports whether any credentials are available (they may still be expired or revoked).
@@ -250,6 +270,14 @@ func (a *Auth) AccessToken(ctx context.Context) (string, error) {
 func (a *Auth) Refresh(ctx context.Context, rejected string) (string, error) {
 	a.refreshMu.Lock()
 	defer a.refreshMu.Unlock()
+	// Another process (a second server, or `crunch-mcp login`) may share the token file. Holding
+	// the file lock from reading the tokens until the rotated ones are saved means only one of
+	// them ever spends a given refresh token; the others pick up its new tokens just below.
+	unlock, err := a.lockTokens(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer unlock()
 
 	a.mu.Lock()
 	a.reloadLocked()
@@ -327,6 +355,18 @@ func (a *Auth) StartLogin() (*LoginStart, error) {
 	return &LoginStart{URL: a.cfg.AuthURL + "/authorize?" + q.Encode(), State: state, RedirectURI: a.cfg.RedirectURI, Scopes: a.cfg.Scopes}, nil
 }
 
+// PendingState reports whether state belongs to a login started with StartLogin
+// that hasn't expired or been completed yet. It doesn't use the state up.
+func (a *Auth) PendingState(state string) bool {
+	if state == "" {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	p, ok := a.pending[state]
+	return ok && time.Since(p.created) <= pendingLoginTTL
+}
+
 var urlish = regexp.MustCompile(`(?i)^https?://|^/|code=`)
 
 // CompleteLogin finishes a login started with StartLogin. It accepts the
@@ -345,13 +385,17 @@ func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode string) (m
 		}
 		query, _, _ = strings.Cut(query, "#")
 		params, _ := url.ParseQuery(query)
+		state = params.Get("state")
+		if state != "" && !a.PendingState(state) {
+			return nil, errors.New("this login link has expired or wasn't started by this server (the state doesn't match). Start again")
+		}
 		if e := params.Get("error"); e != "" {
 			if d := params.Get("error_description"); d != "" {
 				e += " (" + d + ")"
 			}
 			return nil, fmt.Errorf("crunch returned an error instead of a code: %s", e)
 		}
-		code, state = params.Get("code"), params.Get("state")
+		code = params.Get("code")
 	} else {
 		code = input
 	}
@@ -400,6 +444,10 @@ func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode string) (m
 	seed := ""
 	if a.cfg.RefreshToken != "" {
 		seed = fingerprint(a.cfg.RefreshToken)
+	}
+	// Wait for any refresh in another process to finish, so it can't overwrite this login.
+	if unlock, err := a.lockTokens(ctx); err == nil {
+		defer unlock()
 	}
 	a.accept(res, seed)
 	a.mu.Lock()

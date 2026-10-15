@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/mattoddie/crunch-mcp/internal/config"
 )
@@ -58,6 +59,8 @@ type Mock struct {
 	TokenBasicAuth []string
 	// ExpiresIn is the lifetime the mock gives new access tokens (default 3600).
 	ExpiresIn int
+	// TokenDelay slows down /oauth/token, to widen race windows in tests.
+	TokenDelay time.Duration
 }
 
 // AccessToken and RefreshToken are valid from the start.
@@ -167,6 +170,10 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func (m *Mock) token(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
+	m.mu.Lock()
+	delay := m.TokenDelay
+	m.mu.Unlock()
+	time.Sleep(delay)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.TokenRequests++

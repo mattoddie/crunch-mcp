@@ -3,10 +3,8 @@ package tools
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"mime"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -252,7 +250,7 @@ const (
 type Attachment struct {
 	FileName      string `json:"file_name" jsonschema:"File name including its extension, for example receipt.jpg"`
 	ContentBase64 string `json:"content_base64,omitempty" jsonschema:"The file as base64, or as a data URI (data:image/jpeg;base64,...)"`
-	FilePath      string `json:"file_path,omitempty" jsonschema:"Instead of content_base64: path to the file on the machine running this server"`
+	FilePath      string `json:"file_path,omitempty" jsonschema:"Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR"`
 	MimeType      string `json:"mime_type,omitempty" jsonschema:"MIME type, for example image/jpeg (guessed from the file name when omitted)"`
 }
 
@@ -263,19 +261,12 @@ var (
 
 // dataURI builds the data URI Crunch expects in fileContents. Raw base64
 // without the data: prefix is accepted by the API but saves an empty file.
-func (a Attachment) dataURI() (string, error) {
+func (a Attachment) dataURI(c *Context) (string, error) {
 	mimeType := a.MimeType
 	var b64 string
 	switch {
 	case a.FilePath != "":
-		st, err := os.Stat(a.FilePath)
-		if err != nil {
-			return "", err
-		}
-		if st.Size() > maxUploadBytes {
-			return "", fmt.Errorf("%s is larger than 10 MB", a.FilePath)
-		}
-		data, err := os.ReadFile(a.FilePath)
+		data, err := c.readLocalFile(a.FilePath)
 		if err != nil {
 			return "", err
 		}
@@ -307,10 +298,10 @@ func (a Attachment) dataURI() (string, error) {
 }
 
 // attachmentsBody numbers attachments from firstID, as Crunch expects (0, 1, 2...).
-func attachmentsBody(files []Attachment, firstID int64) ([]Obj, error) {
+func attachmentsBody(c *Context, files []Attachment, firstID int64) ([]Obj, error) {
 	out := make([]Obj, 0, len(files))
 	for i, f := range files {
-		uri, err := f.dataURI()
+		uri, err := f.dataURI(c)
 		if err != nil {
 			return nil, err
 		}
@@ -319,28 +310,8 @@ func attachmentsBody(files []Attachment, firstID int64) ([]Obj, error) {
 	return out, nil
 }
 
-// saveFile writes a downloaded file to saveTo (a directory or a file path) without overwriting anything.
-func saveFile(saveTo, name string, data []byte) (string, error) {
-	target := saveTo
-	if st, err := os.Stat(saveTo); err == nil && st.IsDir() {
-		target = filepath.Join(saveTo, filepath.Base(name))
-	}
-	f, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return "", fmt.Errorf("%s already exists; choose another save_to", target)
-		}
-		return "", err
-	}
-	if _, err := f.Write(data); err != nil {
-		f.Close()
-		return "", err
-	}
-	return target, f.Close()
-}
-
 // fileResult returns a downloaded file: images inline, other files (PDFs) as an embedded resource.
-func fileResult(f *crunch.File, fallbackName, uri, saveTo string) (Result, error) {
+func fileResult(c *Context, f *crunch.File, fallbackName, uri, saveTo string) (Result, error) {
 	name := f.Filename
 	if name == "" {
 		name = fallbackName
@@ -351,7 +322,7 @@ func fileResult(f *crunch.File, fallbackName, uri, saveTo string) (Result, error
 	}
 	meta := Obj{"file_name": name, "mime_type": mimeType, "bytes": len(f.Data)}
 	if saveTo != "" {
-		saved, err := saveFile(saveTo, name, f.Data)
+		saved, err := c.saveLocalFile(saveTo, name, f.Data)
 		if err != nil {
 			return Result{}, err
 		}

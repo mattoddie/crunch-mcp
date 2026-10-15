@@ -22,6 +22,8 @@ Run `docker compose logs crunch-mcp`. The last line names the problem, for examp
 | `CRUNCH_ALLOW_WRITES must be true or false, got "…"` | Fix the value. Booleans accept `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. |
 | `unknown toolset "x" in CRUNCH_TOOLSETS; valid: …` | Fix the typo. The message lists the valid names. |
 | `MCP_TRANSPORT must be stdio or http, got "…"` | Fix the value. |
+| `MCP_AUTH_TOKEN is required for the http transport …` | Set `MCP_AUTH_TOKEN` to a long random value (`openssl rand -hex 32`) and give it to your MCP clients. Only if something in front of the server already authenticates every request, set `MCP_ALLOW_UNAUTHENTICATED=true` instead. |
+| `CRUNCH_FILES_DIR (…) must be an existing directory` | Create the directory (in Docker, mount it), or unset the variable. |
 | `CRUNCH_API_URL must use https:// (or http://), got …` | Include the scheme, or remove the variable to use the default. The same applies to `CRUNCH_AUTH_URL` and `CRUNCH_REDIRECT_URI`. |
 | `MCP_HTTP_PORT must be a positive integer, got "…"` | Fix the value. The same applies to `CRUNCH_TIMEOUT_MS`. |
 | `could not read CRUNCH_CLIENT_SECRET_FILE (…)` | The secret file isn't mounted where the variable points. |
@@ -34,9 +36,10 @@ Run `docker compose logs crunch-mcp`. The last line names the problem, for examp
 2. **Right host?** The port is published on the machine running Docker. If Docker runs on another machine (for example with `DOCKER_HOST`), `localhost` won't work.
 3. **Right path?** The endpoint is `/mcp`, so the URL is `http://<docker-host>:8080/mcp`.
 4. **`401 Unauthorized`:** the client isn't sending `Authorization: Bearer <MCP_AUTH_TOKEN>`, or the token doesn't match. Watch for stray quotes or spaces in `.env`.
-5. **`403 Host … is not allowed`:** add the hostname the client uses to `MCP_ALLOWED_HOSTS`, or unset it.
-6. **The client expects SSE:** the server is stateless and answers `POST` requests with JSON. Make sure the client is set to *Streamable HTTP* (often called `http`), not `sse`.
-7. **stdio clients show nothing:** check that the command has `-i` and not `-t`, and that `MCP_TRANSPORT=stdio` is set when using the image, which defaults to HTTP.
+5. **`403 Host … is not allowed`** or **`403 Origin … is not allowed`:** add the hostname the client uses (or, for a browser-based client, the host of the page it runs on) to `MCP_ALLOWED_HOSTS`, or unset it.
+6. **Running the binary, and other machines can't connect:** it listens on `127.0.0.1` unless you set `MCP_HTTP_HOST`, for example to `0.0.0.0`.
+7. **The client expects SSE:** the server is stateless and answers `POST` requests with JSON. Make sure the client is set to *Streamable HTTP* (often called `http`), not `sse`.
+8. **stdio clients show nothing:** check that the command has `-i` and not `-t`, and that `MCP_TRANSPORT=stdio` is set when using the image, which defaults to HTTP.
 
 ## Logging in
 
@@ -50,13 +53,17 @@ Crunch has sent the browser to the redirect URI (`http://127.0.0.1:8976/callback
 
 - Docker runs on another machine,
 - you started the login with `crunch_auth_start` (the running server doesn't listen on port 8976), or
-- you forgot `-p 8976:8976` on `docker compose run`.
+- you forgot `-p 127.0.0.1:8976:8976` on `docker compose run`.
 
 The address bar already holds what crunch-mcp needs. Copy the whole URL (it contains `code=` and `state=`) and paste it into the terminal, or into the chat for `crunch_auth_complete`.
 
 **`Could not listen on 127.0.0.1:8976 for the redirect (…); paste the URL instead.`**
 
-Something else is using port 8976. Pasting the URL works fine. To use another port, set `CRUNCH_REDIRECT_URI`, for example to `http://127.0.0.1:8977/callback`, as long as your API account doesn't have a fixed redirect URI. In Docker, the container keeps listening on 8976, so publish it as `-p 8977:8976`.
+Something else is using port 8976. Pasting the URL works fine. To use another port, set `CRUNCH_REDIRECT_URI`, for example to `http://127.0.0.1:8977/callback`, as long as your API account doesn't have a fixed redirect URI. In Docker, the container keeps listening on 8976, so publish it as `-p 127.0.0.1:8977:8976`.
+
+**`This isn't the redirect for the login crunch-mcp is waiting for`**
+
+The page that reached the login listener didn't carry the `state` of the login `crunch-mcp login` started, or it took longer than 15 minutes. Use the URL the command printed this time (not an old tab or bookmark), or start again.
 
 **`crunch token request failed (HTTP 401): invalid_client …`**
 
@@ -88,7 +95,7 @@ Without `offline_access`, the login only lasts about an hour. Unset `CRUNCH_SCOP
 
 ## "Not logged in" and expired logins
 
-**`not logged in to Crunch. Run crunch-mcp login (or docker compose run --rm -p 8976:8976 crunch-mcp login), or use the crunch_auth_start tool`**
+**`not logged in to Crunch. Run crunch-mcp login (or docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login), or use the crunch_auth_start tool`**
 
 The server has no tokens. Either nobody has logged in, or the token file isn't where the server looks:
 
@@ -164,9 +171,14 @@ Crunch's rate limit is about 100 requests per second, and crunch-mcp retries a f
 |---|---|
 | `… is larger than 10 MB` | crunch-mcp uploads files of up to 10 MB. Compress or resize the file. |
 | `the content of … is not valid base64` | The client sent a damaged file. Attach it again, or use `file_path`. |
-| `open …: no such file or directory` with `file_path` | The path is on the machine running crunch-mcp, not yours. In Docker, mount the folder into the container. |
+| `reading and saving local files is disabled …` | `file_path` and `save_to` need `CRUNCH_FILES_DIR`. Send the file as `content_base64` instead, or set `CRUNCH_FILES_DIR` to a folder for attachments and downloads. |
+| `… is outside CRUNCH_FILES_DIR (…)` | Put the file in `CRUNCH_FILES_DIR` (or save there). Paths that lead out of it, through `..` or a symlink, are refused. |
+| `refusing to use …: it holds credentials` | The path is the token file (or its lock or temporary files), or under `/run/secrets`. These are never read or written by tools. |
+| `open …: no such file or directory` with `file_path` | The path is on the machine running crunch-mcp, not yours. In Docker, mount the folder into the container at `CRUNCH_FILES_DIR`. |
 | `… already exists; choose another save_to` | `save_to` never overwrites. Choose another name or folder. |
-| `save_to` fails with `read-only file system` or `permission denied` | Mount a writable folder in the container and save there. |
+| `save_to` fails with `read-only file system` or `permission denied` | Mount a writable folder in the container as `CRUNCH_FILES_DIR` and save there. |
+| `payment reminders are emails Crunch sends to the customer, so turning on sendReminders needs CRUNCH_ALLOW_EMAIL=true` | Payment reminders email your customer, so they follow the email switch. Turn them on in Crunch yourself, or set `CRUNCH_ALLOW_EMAIL=true`. |
+| `this update leaves out existing payments (id …)` (or `supplierPayments`, `attachments`) | Crunch deletes the payments and attachments an update doesn't send back, so without `CRUNCH_ALLOW_DELETES` they must be kept. Leave them out of `changes`, or send them back exactly as `crunch_get_*` with `raw=true` returns them. |
 | `Too large to return inline (over 8 MB)` | Use `save_to` to save the file instead. |
 | A downloaded attachment is empty (0 bytes) | It was uploaded to Crunch without a `data:` URI by another tool, and Crunch stored an empty file. Upload it again. |
 | `an invoice can have at most 5 attachments` | Remove one in Crunch first, or combine files. |

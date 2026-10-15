@@ -29,6 +29,9 @@ LABEL org.opencontainers.image.title="crunch-mcp" \
 COPY --from=build /out/crunch-mcp /crunch-mcp
 # Tokens live here; mount a volume so logins survive restarts (refresh tokens rotate).
 COPY --from=build --chown=65532:65532 /out/data /data
+# Inside the container the server must listen on all interfaces for a published port to
+# reach it (the binary itself defaults to 127.0.0.1). MCP_AUTH_TOKEN is still required, and
+# the login listener should be published on loopback: -p 127.0.0.1:8976:8976.
 ENV MCP_TRANSPORT=http \
     MCP_HTTP_HOST=0.0.0.0 \
     MCP_HTTP_PORT=8080 \

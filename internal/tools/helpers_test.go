@@ -167,3 +167,13 @@ func challengeOfURL(t *testing.T, authURL string) (challenge, state string) {
 	}
 	return u.Query().Get("code_challenge"), u.Query().Get("state")
 }
+
+// filesDir returns a temporary directory as CRUNCH_FILES_DIR would hold it (symlinks resolved).
+func filesDir(t *testing.T) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}

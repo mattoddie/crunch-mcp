@@ -134,7 +134,8 @@ The input struct **is** the tool's argument schema:
 | `merge()` | Apply `extra` or `changes` (raw Crunch fields) last, so they override typed arguments. |
 | `ref()` | Turn an optional ID into Crunch's `{"id": …}` reference. |
 | `Attachment` and `attachmentsBody()` | Uploads from base64, a `data:` URI or a file path, sent as the `data:` URIs Crunch requires. |
-| `fileResult()` and `saveFile()` | Downloads: images inline, other files as embedded resources, and `save_to` without overwriting. |
+| `fileResult()` | Downloads: images inline, other files as embedded resources, and `save_to` without overwriting. |
+| `guards.go` | Checks that apply the switches inside request bodies: `checkReminders()` (payment reminders need email), `checkKeepsEntries()` (updates keep payments and attachments without deletes), and `readLocalFile()`/`saveLocalFile()` (files stay inside `CRUNCH_FILES_DIR`). Use them in any new tool that takes raw fields, updates a record with payments or attachments, or touches local files. |
 
 ### Checklist for a new tool
 
@@ -203,7 +204,7 @@ Or build the image and point Claude Code at it:
 
 ```sh
 make image
-docker run --rm -it -p 8976:8976 -v crunch-dev:/data --env-file .env crunch-mcp:0.0.0-dev login
+docker run --rm -it -p 127.0.0.1:8976:8976 -v crunch-dev:/data --env-file .env crunch-mcp:0.0.0-dev login
 docker run --rm -p 8080:8080 -v crunch-dev:/data --env-file .env crunch-mcp:0.0.0-dev
 claude mcp add --transport http crunch-dev http://localhost:8080/mcp --header "Authorization: Bearer $MCP_AUTH_TOKEN"
 ```

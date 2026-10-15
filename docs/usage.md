@@ -151,13 +151,14 @@ Amounts are in pounds and can be given as numbers (`120`) or decimal strings (`"
 
 Payments and attachments have their own tools, which also keep what's already there: `crunch_add_expense_payment`, `crunch_add_invoice_payment`, `crunch_add_expense_attachment` and `crunch_add_invoice_attachment`.
 
-Some arguments replace a whole list: `line_items` on an expense and `items` on an invoice replace all existing lines, and a new `billing_address` replaces the whole address. For fields without their own argument, `changes` (on updates) and `extra` (on creates) take Crunch's own field names and are merged in last.
+Some arguments replace a whole list: `line_items` on an expense and `items` on an invoice replace all existing lines, and a new `billing_address` replaces the whole address. For fields without their own argument, `changes` (on updates) and `extra` (on creates) take Crunch's own field names and are merged in last. Without `CRUNCH_ALLOW_DELETES`, an update whose `changes` would drop an existing payment or attachment is refused, and without `CRUNCH_ALLOW_EMAIL`, so is anything that turns on payment reminders.
 
 ### Issuing and emailing invoices
 
 - `crunch_create_invoice` creates a **draft**. Drafts can be changed or deleted freely.
 - `crunch_issue_invoice` gives it an invoice number and posts it to your accounts. **This is final**: corrections afterwards need a credit note in Crunch. It's marked destructive for that reason. Issuing doesn't email anyone.
 - `crunch_email_invoice` sends the invoice to the customer from Crunch, as a real email. It only exists with `CRUNCH_ALLOW_EMAIL=true`, and the model is told to show you the recipients, subject and message first. It's marked *open-world* because it reaches outside your Crunch account.
+- Payment reminders (`send_reminders: true` on `crunch_create_invoice` or `crunch_update_invoice`) are emails to the customer too, so turning them on also needs `CRUNCH_ALLOW_EMAIL=true`. Turning them off doesn't.
 
 ### Deleting
 
@@ -168,7 +169,7 @@ Deleting needs `CRUNCH_ALLOW_DELETES=true` as well. With it off, the delete tool
 **Uploading.** Tools that take `attachments` (creating an expense or invoice, or adding to one) accept each file in one of two ways:
 
 - `content_base64`: the file as base64 or as a `data:` URI. This is how an assistant passes a file you've attached to the chat.
-- `file_path`: a path to a file **on the machine running crunch-mcp**. In Docker, that's inside the container, so mount a folder if you want to use it.
+- `file_path`: a path to a file **on the machine running crunch-mcp**, inside `CRUNCH_FILES_DIR` (absolute, or relative to it). It's refused unless the server sets `CRUNCH_FILES_DIR`. In Docker, mount a folder into the container and point `CRUNCH_FILES_DIR` at it.
 
 Files can be up to 10 MB each, and an invoice can have up to five. Crunch needs attachments sent as `data:` URIs, and a raw file uploaded any other way is saved as an empty file. crunch-mcp always builds the `data:` URI for you, guessing the MIME type from the file name when you don't give one.
 
@@ -178,7 +179,7 @@ Files can be up to 10 MB each, and an invoice can have up to five. Crunch needs 
 - **PDFs and other files** come back as an embedded resource, which your client may let you open or save.
 - Files over 8 MB aren't returned inline. Use `save_to` instead.
 
-`save_to` also writes the file **on the machine running crunch-mcp**, to a directory (keeping the file's name) or a full path. It never overwrites an existing file. In Docker with the default read-only root filesystem, mount a writable folder for it, for example `./downloads:/downloads`.
+`save_to` also writes the file **on the machine running crunch-mcp**, inside `CRUNCH_FILES_DIR`: to a directory (keeping the file's name) or a file path, absolute or relative to it. It never overwrites an existing file, and it's refused unless the server sets `CRUNCH_FILES_DIR`. In Docker with the default read-only root filesystem, mount a writable folder, for example `./files:/files` with `CRUNCH_FILES_DIR=/files`.
 
 ## Lists, paging and raw objects
 
@@ -200,7 +201,7 @@ Login tokens are never shown by any tool. `crunch_auth_status` reports where the
 | `CRUNCH_ALLOW_WRITES=true` | `GET`, `POST`, `PUT` |
 | `+ CRUNCH_ALLOW_DELETES=true` | All, including `DELETE` |
 
-Without `CRUNCH_ALLOW_EMAIL`, it also refuses the invoice email endpoint. The path must be a plain API path: query parameters go in `query`, and `..` segments are refused. Leave `raw` out of `CRUNCH_TOOLSETS` if you want the assistant limited to the curated tools.
+Without `CRUNCH_ALLOW_EMAIL`, it also refuses email and reminder endpoints and request bodies that turn on `sendReminders`. Without `CRUNCH_ALLOW_DELETES`, a `PUT` to an invoice, expense or recurring expense must send back all of its existing payments and attachments (the tool fetches the record to check). The path must be a plain, canonical API path: query parameters go in `query`, and `.` or `..` segments, `//`, `%`, `;`, spaces and control characters are refused. Leave `raw` out of `CRUNCH_TOOLSETS` if you want the assistant limited to the curated tools.
 
 ## Tips for good results
 

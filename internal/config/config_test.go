@@ -13,7 +13,7 @@ func TestDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Transport != "stdio" || cfg.HTTP.Port != 8080 || cfg.HTTP.Host != "0.0.0.0" {
+	if cfg.Transport != "stdio" || cfg.HTTP.Port != 8080 || cfg.HTTP.Host != "127.0.0.1" || cfg.Tools.FilesDir != "" {
 		t.Errorf("transport defaults: %+v %+v", cfg.Transport, cfg.HTTP)
 	}
 	c := cfg.Crunch
@@ -94,5 +94,60 @@ func TestToolsetsAndSecretsFromFiles(t *testing.T) {
 	}
 	if cfg.Crunch.TokenFile != "/xdg/crunch-mcp/tokens.json" {
 		t.Errorf("token file: %s", cfg.Crunch.TokenFile)
+	}
+}
+
+func TestHTTPNeedsAuthToken(t *testing.T) {
+	base := map[string]string{"MCP_TRANSPORT": "http"}
+	if _, err := Load(MapEnv(base)); err == nil || !strings.Contains(err.Error(), "MCP_AUTH_TOKEN is required") {
+		t.Fatalf("http without a token: got %v", err)
+	}
+	base["MCP_ALLOW_UNAUTHENTICATED"] = "true"
+	if _, err := Load(MapEnv(base)); err != nil {
+		t.Fatalf("explicit opt-out: %v", err)
+	}
+	base["MCP_ALLOW_UNAUTHENTICATED"] = "maybe"
+	if _, err := Load(MapEnv(base)); err == nil || !strings.Contains(err.Error(), "must be true or false") {
+		t.Fatalf("bad opt-out value: %v", err)
+	}
+	delete(base, "MCP_ALLOW_UNAUTHENTICATED")
+	base["MCP_AUTH_TOKEN"] = "secret-token"
+	if _, err := Load(MapEnv(base)); err != nil {
+		t.Fatalf("with a token: %v", err)
+	}
+	// stdio has no network listener, so it needs no token.
+	if _, err := Load(MapEnv(map[string]string{"MCP_TRANSPORT": "stdio"})); err != nil {
+		t.Fatalf("stdio: %v", err)
+	}
+}
+
+func TestFilesDir(t *testing.T) {
+	dir := t.TempDir()
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Fatal(err)
+	}
+	real, _ := filepath.EvalSymlinks(dir)
+	cfg, err := Load(MapEnv(map[string]string{"CRUNCH_FILES_DIR": link}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Tools.FilesDir != real {
+		t.Errorf("files dir: %q, want the resolved %q", cfg.Tools.FilesDir, real)
+	}
+	file := filepath.Join(dir, "f")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{filepath.Join(dir, "missing"), file} {
+		if _, err := Load(MapEnv(map[string]string{"CRUNCH_FILES_DIR": bad})); err == nil || !strings.Contains(err.Error(), "existing directory") {
+			t.Errorf("%s: %v", bad, err)
+		}
+	}
+	if _, err := filesDir("/"); err != nil {
+		t.Errorf("/: %v", err)
+	}
+	if !Within("/run/secrets/x", SecretsDir) || !Within("/run/secrets", SecretsDir) || Within("/run/secretsx", SecretsDir) || !Within("/a", "/") {
+		t.Error("Within")
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/mattoddie/crunch-mcp/internal/config"
 	"github.com/mattoddie/crunch-mcp/internal/crunch/crunchtest"
 )
 
@@ -99,9 +100,11 @@ func TestListInvoicesByStatusAndTotals(t *testing.T) {
 }
 
 func TestDownloadInvoicePDF(t *testing.T) {
-	env := newEnv(t)
+	dir := filesDir(t)
+	o := config.AllTools()
+	o.FilesDir = dir
+	env := newEnv(t, o)
 	env.mock.On("GET", "/invoices/500/pdf", func(crunchtest.Request, []string) (int, any) { return 200, []byte("%PDF-1.7 fake") })
-	dir := t.TempDir()
 	res := env.raw("crunch_download_invoice_pdf", map[string]any{"invoice_id": 500, "save_to": dir})
 	if res.IsError {
 		t.Fatal(text(res))

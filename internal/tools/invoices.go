@@ -73,14 +73,14 @@ func (a invoiceTotalsArgs) filtered() bool {
 
 type downloadInvoicePDFArgs struct {
 	InvoiceID int64  `json:"invoice_id" jsonschema:"Invoice ID (see crunch_list_invoices)"`
-	SaveTo    string `json:"save_to,omitempty" jsonschema:"Also save the file on the machine running this server: a directory (the file keeps its name) or a full path. Existing files are never overwritten."`
+	SaveTo    string `json:"save_to,omitempty" jsonschema:"Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR"`
 }
 
 type downloadInvoiceAttachmentArgs struct {
 	InvoiceID    int64  `json:"invoice_id" jsonschema:"Invoice ID (see crunch_list_invoices)"`
 	AttachmentID int64  `json:"attachment_id" jsonschema:"Attachment ID within the invoice (see crunch_get_invoice)"`
 	FileName     string `json:"file_name,omitempty" jsonschema:"Attachment file name (looked up when omitted)"`
-	SaveTo       string `json:"save_to,omitempty" jsonschema:"Also save the file on the machine running this server: a directory (the file keeps its name) or a full path. Existing files are never overwritten."`
+	SaveTo       string `json:"save_to,omitempty" jsonschema:"Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR"`
 }
 
 type createInvoiceArgs struct {
@@ -90,7 +90,7 @@ type createInvoiceArgs struct {
 	Items            []InvoiceItem  `json:"items" jsonschema:"Invoice lines"`
 	BankAccountID    *int64         `json:"bank_account_id,omitempty" jsonschema:"Bank account the customer should pay into, shown on the invoice (see crunch_list_bank_accounts)"`
 	PaymentTermsDays *int           `json:"payment_terms_days,omitempty" jsonschema:"Payment terms in days, for example 28"`
-	SendReminders    *bool          `json:"send_reminders,omitempty" jsonschema:"Have Crunch send payment reminders"`
+	SendReminders    *bool          `json:"send_reminders,omitempty" jsonschema:"Have Crunch email the customer payment reminders (true needs CRUNCH_ALLOW_EMAIL=true)"`
 	Reference        string         `json:"reference,omitempty" jsonschema:"Your reference"`
 	PurchaseOrder    string         `json:"purchase_order,omitempty" jsonschema:"The customer's purchase order number"`
 	Note             string         `json:"note,omitempty" jsonschema:"Note printed on the invoice (see crunch_get_default_invoice_note)"`
@@ -107,7 +107,7 @@ type updateInvoiceArgs struct {
 	Items            []InvoiceItem  `json:"items,omitempty" jsonschema:"Replacement lines (all existing lines are replaced)"`
 	BankAccountID    *int64         `json:"bank_account_id,omitempty" jsonschema:"Bank account shown on the invoice"`
 	PaymentTermsDays *int           `json:"payment_terms_days,omitempty" jsonschema:"Payment terms in days"`
-	SendReminders    *bool          `json:"send_reminders,omitempty" jsonschema:"Have Crunch send payment reminders"`
+	SendReminders    *bool          `json:"send_reminders,omitempty" jsonschema:"Have Crunch email the customer payment reminders (true needs CRUNCH_ALLOW_EMAIL=true)"`
 	Reference        *string        `json:"reference,omitempty" jsonschema:"New reference"`
 	PurchaseOrder    *string        `json:"purchase_order,omitempty" jsonschema:"New purchase order number"`
 	Note             *string        `json:"note,omitempty" jsonschema:"New note printed on the invoice"`
@@ -283,7 +283,7 @@ func registerInvoices(c *Context) {
 
 	add(c, Def{
 		Toolset: "invoices", Name: "crunch_download_invoice_pdf", Title: "Download invoice PDF",
-		Description: "Download a sales invoice as a PDF, as Crunch renders it for the customer. Returned as an embedded resource; use save_to to also write it to disk.",
+		Description: "Download a sales invoice as a PDF, as Crunch renders it for the customer. Returned as an embedded resource; use save_to to also write it to disk (when the server sets CRUNCH_FILES_DIR).",
 	}, func(ctx context.Context, a downloadInvoicePDFArgs) (any, error) {
 		f, err := cl.GetFile(ctx, path("/invoices/%d/pdf", a.InvoiceID), nil)
 		if err != nil {
@@ -292,7 +292,7 @@ func registerInvoices(c *Context) {
 		if f.ContentType == "application/octet-stream" || f.ContentType == "" {
 			f.ContentType = "application/pdf"
 		}
-		return fileResult(f, fmt.Sprintf("invoice-%d.pdf", a.InvoiceID), fmt.Sprintf("crunch://invoices/%d/pdf", a.InvoiceID), a.SaveTo)
+		return fileResult(c, f, fmt.Sprintf("invoice-%d.pdf", a.InvoiceID), fmt.Sprintf("crunch://invoices/%d/pdf", a.InvoiceID), a.SaveTo)
 	})
 
 	add(c, Def{
@@ -318,7 +318,7 @@ func registerInvoices(c *Context) {
 		if err != nil {
 			return nil, err
 		}
-		return fileResult(f, name, fmt.Sprintf("crunch://invoices/%d/attachments/%d", a.InvoiceID, a.AttachmentID), a.SaveTo)
+		return fileResult(c, f, name, fmt.Sprintf("crunch://invoices/%d/attachments/%d", a.InvoiceID, a.AttachmentID), a.SaveTo)
 	})
 
 	add(c, Def{
@@ -333,6 +333,12 @@ func registerInvoices(c *Context) {
 		}
 		if len(a.Attachments) > maxInvoiceAttachments {
 			return nil, fmt.Errorf("an invoice can have at most %d attachments", maxInvoiceAttachments)
+		}
+		if a.SendReminders != nil && *a.SendReminders && !c.AllowEmail {
+			return nil, errors.New(remindersDisabled)
+		}
+		if err := c.checkReminders(a.Extra); err != nil {
+			return nil, err
 		}
 		lineType := a.LineItemType
 		if lineType == "" {
@@ -353,7 +359,7 @@ func registerInvoices(c *Context) {
 			body["note"] = Obj{"text": a.Note}
 		}
 		if len(a.Attachments) > 0 {
-			files, err := attachmentsBody(a.Attachments, 0)
+			files, err := attachmentsBody(c, a.Attachments, 0)
 			if err != nil {
 				return nil, err
 			}
@@ -371,6 +377,12 @@ func registerInvoices(c *Context) {
 		Description: "Change a sales invoice. The current invoice is fetched and only what you pass changes; existing payments and attachments are kept. `items` replaces all lines. Issued invoices may be restricted by Crunch.",
 		Gate:        Write, Idempotent: true,
 	}, func(ctx context.Context, a updateInvoiceArgs) (any, error) {
+		if a.SendReminders != nil && *a.SendReminders && !c.AllowEmail {
+			return nil, errors.New(remindersDisabled)
+		}
+		if err := c.checkReminders(a.Changes); err != nil {
+			return nil, err
+		}
 		current, err := getInvoice(ctx, a.InvoiceID)
 		if err != nil {
 			return nil, err
@@ -394,7 +406,11 @@ func registerInvoices(c *Context) {
 		if len(patch) == 0 && len(a.Changes) == 0 {
 			return nil, errors.New("nothing to change")
 		}
-		updated, err := putInvoice(ctx, a.InvoiceID, deepMerge(deepMerge(current, patch), a.Changes))
+		body := deepMerge(deepMerge(current, patch), a.Changes)
+		if err := c.checkKeepsEntries(current, body); err != nil {
+			return nil, err
+		}
+		updated, err := putInvoice(ctx, a.InvoiceID, body)
 		if err != nil {
 			return nil, err
 		}
@@ -524,7 +540,7 @@ func registerInvoices(c *Context) {
 				next = id + 1
 			}
 		}
-		files, err := attachmentsBody(a.Attachments, next)
+		files, err := attachmentsBody(c, a.Attachments, next)
 		if err != nil {
 			return nil, err
 		}

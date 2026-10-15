@@ -595,7 +595,7 @@ Attach one or more files (receipts, invoices) to an existing expense. Existing a
 | `attachments` | object[] | yes | Files to attach |
 | `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
-| `attachments[].file_path` | string |  | Instead of content_base64: path to the file on the machine running this server |
+| `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
 
@@ -635,7 +635,7 @@ Record an expense: who it was from, the date, one or more lines (expense type, V
 | `attachments` | object[] |  | Receipts or invoices to attach |
 | `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
-| `attachments[].file_path` | string |  | Instead of content_base64: path to the file on the machine running this server |
+| `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
 | `create_supplier` | boolean |  | With supplier_name: create the supplier if it doesn't exist yet (default false) |
 | `extra` | object |  | Additional raw ExpenseDto fields, using Crunch's own field names (advanced). Merged last. |
@@ -672,7 +672,7 @@ Download a receipt or other file attached to an expense. Images are returned so 
 | `attachment_id` | integer | yes | Attachment ID within the expense (0, 1, 2...; see crunch_get_expense) |
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
 | `file_name` | string |  | Attachment file name (looked up when omitted) |
-| `save_to` | string |  | Also save the file on the machine running this server: a directory (the file keeps its name) or a full path. Existing files are never overwritten. |
+| `save_to` | string |  | Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR |
 
 ### crunch_get_expense
 
@@ -899,7 +899,7 @@ Attach files (for example timesheets) to a sales invoice. Existing attachments a
 | `attachments` | object[] | yes | Files to attach (an invoice can have up to 5) |
 | `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
-| `attachments[].file_path` | string |  | Instead of content_base64: path to the file on the machine running this server |
+| `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices) |
 
@@ -936,7 +936,7 @@ Create a draft sales invoice for a client: date, lines (description, unit price 
 | `attachments` | object[] |  | Up to 5 files to attach |
 | `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
-| `attachments[].file_path` | string |  | Instead of content_base64: path to the file on the machine running this server |
+| `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
 | `bank_account_id` | integer |  | Bank account the customer should pay into, shown on the invoice (see crunch_list_bank_accounts) |
 | `due_date` | string |  | Due date (YYYY-MM-DD); worked out from the payment terms when omitted |
@@ -946,7 +946,7 @@ Create a draft sales invoice for a client: date, lines (description, unit price 
 | `payment_terms_days` | integer |  | Payment terms in days, for example 28 |
 | `purchase_order` | string |  | The customer's purchase order number |
 | `reference` | string |  | Your reference |
-| `send_reminders` | boolean |  | Have Crunch send payment reminders |
+| `send_reminders` | boolean |  | Have Crunch email the customer payment reminders (true needs CRUNCH_ALLOW_EMAIL=true) |
 
 ### crunch_delete_invoice
 
@@ -969,18 +969,18 @@ Download a file attached to a sales invoice. Attachment IDs and names come from 
 | `attachment_id` | integer | yes | Attachment ID within the invoice (see crunch_get_invoice) |
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices) |
 | `file_name` | string |  | Attachment file name (looked up when omitted) |
-| `save_to` | string |  | Also save the file on the machine running this server: a directory (the file keeps its name) or a full path. Existing files are never overwritten. |
+| `save_to` | string |  | Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR |
 
 ### crunch_download_invoice_pdf
 
 🟢 read
 
-Download a sales invoice as a PDF, as Crunch renders it for the customer. Returned as an embedded resource; use save_to to also write it to disk.
+Download a sales invoice as a PDF, as Crunch renders it for the customer. Returned as an embedded resource; use save_to to also write it to disk (when the server sets CRUNCH_FILES_DIR).
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices) |
-| `save_to` | string |  | Also save the file on the machine running this server: a directory (the file keeps its name) or a full path. Existing files are never overwritten. |
+| `save_to` | string |  | Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR |
 
 ### crunch_email_invoice
 
@@ -1104,7 +1104,7 @@ Change a sales invoice. The current invoice is fetched and only what you pass ch
 | `payment_terms_days` | integer |  | Payment terms in days |
 | `purchase_order` | string |  | New purchase order number |
 | `reference` | string |  | New reference |
-| `send_reminders` | boolean |  | Have Crunch send payment reminders |
+| `send_reminders` | boolean |  | Have Crunch email the customer payment reminders (true needs CRUNCH_ALLOW_EMAIL=true) |
 
 ## raw
 

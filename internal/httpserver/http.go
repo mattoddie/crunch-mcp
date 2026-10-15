@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -35,12 +36,28 @@ func tokenMatches(header, token string) bool {
 	return ok && subtle.ConstantTimeCompare([]byte(strings.TrimSpace(presented)), []byte(token)) == 1
 }
 
+// hostAllowed reports whether host (with or without a port) is on the allow-list.
+func hostAllowed(allowed []string, host string) bool {
+	hostname := host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		hostname = h
+	}
+	for _, a := range allowed {
+		if a == host || a == hostname {
+			return true
+		}
+	}
+	return false
+}
+
 // Handler serves /mcp (stateless Streamable HTTP, so the container can be restarted or scaled freely) and /health.
 func Handler(cfg config.HTTP, server *mcp.Server) http.Handler {
 	mcpHandler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return server }, &mcp.StreamableHTTPOptions{
 		Stateless:                  true,
 		JSONResponse:               true,
 		DisableLocalhostProtection: len(cfg.AllowedHosts) > 0, // MCP_ALLOWED_HOSTS replaces the built-in localhost check
+		// The SDK applies its own 4 MiB limit unless told otherwise, which would cut off 10 MB attachments.
+		MaxRequestBodyBytes: maxBodyBytes,
 	})
 	mux := http.NewServeMux()
 	health := func(w http.ResponseWriter, _ *http.Request) {
@@ -51,20 +68,17 @@ func Handler(cfg config.HTTP, server *mcp.Server) http.Handler {
 	mux.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
 		if len(cfg.AllowedHosts) > 0 {
 			host := strings.ToLower(r.Host)
-			hostname := host
-			if h, _, err := net.SplitHostPort(host); err == nil {
-				hostname = h
-			}
-			allowed := false
-			for _, a := range cfg.AllowedHosts {
-				if a == host || a == hostname {
-					allowed = true
-					break
-				}
-			}
-			if !allowed {
+			if !hostAllowed(cfg.AllowedHosts, host) {
 				rpcError(w, http.StatusForbidden, "Host "+host+" is not allowed")
 				return
+			}
+			// Browsers send Origin with cross-site requests: a page on another site must not reach the tools.
+			if origin := r.Header.Get("Origin"); origin != "" {
+				u, err := url.Parse(origin)
+				if err != nil || u.Host == "" || !hostAllowed(cfg.AllowedHosts, strings.ToLower(u.Host)) {
+					rpcError(w, http.StatusForbidden, "Origin "+origin+" is not allowed")
+					return
+				}
 			}
 		}
 		if cfg.AuthToken != "" && !tokenMatches(r.Header.Get("Authorization"), cfg.AuthToken) {
@@ -88,7 +102,7 @@ func Addr(cfg config.HTTP) string {
 
 // Serve listens until the server is shut down.
 func Serve(srv *http.Server, cfg config.HTTP) error {
-	auth := ""
+	auth := " (WITHOUT bearer auth: MCP_ALLOW_UNAUTHENTICATED=true)"
 	if cfg.AuthToken != "" {
 		auth = " (bearer auth enabled)"
 	}
