@@ -1,0 +1,23 @@
+name: ✨ Feature request
+description: Suggest a new tool or improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe what you'd like to ask your assistant to do, or what's missing today.
+      placeholder: e.g. "I'd like to see which expenses are still unreconciled so I can match them before my year end."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: New tool(s), arguments or behaviour. If it maps to an endpoint in [Crunch's API documentation](https://developer.crunch.co.uk/api-documentation/), include it. Only documented endpoints are part of Crunch's public API.
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd be willing to open a pull request for this

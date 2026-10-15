@@ -1,0 +1,21 @@
+# Copy example.env to .env and fill it in, then:
+#   docker compose run --rm -p 8976:8976 crunch-mcp login   # once, to log in to Crunch
+#   docker compose up -d
+services:
+  crunch-mcp:
+    image: ghcr.io/mattoddie/crunch-mcp:latest
+    # To build from source instead of pulling, replace the line above with:
+    # build: .
+    container_name: crunch-mcp
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - crunch-data:/data
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+volumes:
+  crunch-data:

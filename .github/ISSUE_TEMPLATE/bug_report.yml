@@ -1,0 +1,64 @@
+name: 🐛 Bug report
+description: Something doesn't work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please check [Troubleshooting](https://crunch-mcp.mattoddie.dev/docs/troubleshooting/) first.
+        **Remove tokens, client secrets, bank details, customer names and other private or financial details** from anything you paste.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: tool
+    attributes:
+      label: Tool(s) involved
+      placeholder: e.g. crunch_create_expense
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error output
+      description: The tool error text and/or `docker compose logs crunch-mcp` output, with private details removed.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: crunch-mcp version
+      description: From `crunch-mcp version`, or the image tag you run.
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: client-type
+    attributes:
+      label: Crunch API client type
+      options:
+        - Public (PKCE, no client secret)
+        - Confidential (with a client secret)
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: access
+    attributes:
+      label: Access settings
+      description: Which of CRUNCH_ALLOW_WRITES, CRUNCH_ALLOW_DELETES and CRUNCH_ALLOW_EMAIL are on, CRUNCH_TOOLSETS if not all, and CRUNCH_SCOPES if you set it.
+      placeholder: e.g. writes on, deletes off, email off, toolsets all
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Transport and client
+      options:
+        - HTTP — Claude Code
+        - HTTP — other client
+        - stdio — Claude Desktop
+        - stdio — other client
+    validations:
+      required: true

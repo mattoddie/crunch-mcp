@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@700&display=block">
+<style>
+*{margin:0;box-sizing:border-box}
+body{width:1200px;height:630px;background:#07100d;color:#ebf3ef;font-family:Inter,sans-serif;overflow:hidden;position:relative}
+.bg{position:absolute;inset:0;background:radial-gradient(50% 60% at 15% 20%,rgba(132,204,22,.28),transparent 70%),radial-gradient(45% 55% at 90% 80%,rgba(20,184,166,.28),transparent 70%),radial-gradient(35% 45% at 60% 100%,rgba(16,185,129,.2),transparent 70%)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(70% 70% at 40% 40%,#000 30%,transparent 85%)}
+.c{position:absolute;inset:0;padding:64px 90px;display:flex;flex-direction:column;justify-content:center}
+.row{display:flex;align-items:center;gap:28px}
+.row svg{flex:none;border-radius:36px;box-shadow:0 20px 50px -12px rgba(5,150,105,.6)}
+.name{font:700 64px 'Space Grotesk';letter-spacing:-.02em}
+h1{font:700 80px/1.02 'Space Grotesk';letter-spacing:-.03em;margin-top:36px}
+h1 span{background:linear-gradient(100deg,#d9f99d,#6ee7b7 45%,#5eead4);-webkit-background-clip:text;color:transparent}
+p{font-size:28px;color:#a9bab3;margin-top:26px}
+.tags{display:flex;gap:12px;margin-top:34px}
+.tags b{font:500 20px 'JetBrains Mono';padding:8px 16px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.05);color:#a7f3d0}
+</style></head><body><div class="bg"></div><div class="grid"></div>
+<div class="c"><div class="row"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="168" height="168" role="img" aria-label="crunch-mcp logo">
+  <defs>
+    <linearGradient id="cm-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#84CC16"/>
+      <stop offset="0.5" stop-color="#10B981"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <radialGradient id="cm-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="168" height="168" rx="28" fill="url(#cm-bg)"/>
+  <circle cx="54" cy="58" r="46" fill="url(#cm-glow)"/>
+  <!-- A ledger page: rows, an amounts column and a double-ruled total. -->
+  <rect x="20" y="22" width="64" height="84" rx="9" fill="#FFFFFF"/>
+  <g stroke="#0F766E" stroke-width="3.5" stroke-linecap="round">
+    <line x1="30" y1="38" x2="52" y2="38" stroke-opacity="0.45"/>
+    <line x1="30" y1="50" x2="46" y2="50" stroke-opacity="0.45"/>
+    <line x1="30" y1="62" x2="50" y2="62" stroke-opacity="0.45"/>
+    <line x1="30" y1="74" x2="42" y2="74" stroke-opacity="0.45"/>
+    <line x1="63" y1="38" x2="74" y2="38"/>
+    <line x1="67" y1="50" x2="74" y2="50"/>
+    <line x1="63" y1="62" x2="74" y2="62"/>
+    <line x1="66" y1="74" x2="74" y2="74"/>
+  </g>
+  <line x1="57" y1="30" x2="57" y2="80" stroke="#10B981" stroke-opacity="0.35" stroke-width="2"/>
+  <g stroke="#10B981" stroke-width="3" stroke-linecap="round">
+    <line x1="58" y1="88" x2="76" y2="88"/>
+    <line x1="58" y1="95" x2="76" y2="95"/>
+  </g>
+  <!-- The connector: the page plugs in. -->
+  <rect x="84" y="52" width="18" height="28" rx="5" fill="#FFFFFF"/>
+  <rect x="80" y="58" width="6" height="16" fill="#FFFFFF"/>
+  <g fill="#FFFFFF">
+    <rect x="100" y="56" width="15" height="6" rx="3"/>
+    <rect x="100" y="70" width="15" height="6" rx="3"/>
+  </g>
+  <circle cx="93" cy="66" r="3" fill="#10B981"/>
+</svg><div class="name">crunch-mcp</div></div>
+<h1>Talk to your <span>Crunch books.</span></h1>
+<p>An open-source MCP server for Claude and other AI assistants.</p>
+<div class="tags"><b>70 tools</b><b>Docker</b><b>Read-only by default</b><b>MIT</b></div></div></body></html>
