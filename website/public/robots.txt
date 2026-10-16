@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://crunch-mcp.mattoddie.dev/sitemap-index.xml
