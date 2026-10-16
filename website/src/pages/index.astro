@@ -3,6 +3,23 @@ import logo from "../../../docs/assets/logo.svg?raw";
 import { prompts, toolsets, totals } from "../lib/tools";
 
 const GITHUB = "https://github.com/mattoddie/crunch-mcp";
+
+// Illustrative month-to-date balances (£) for the hero chart, not real data. The chat's write
+// records Acme's £5,400 payment, which lifts the last point.
+const balances = [15320, 15320, 15134, 15134, 14634, 16834, 16834, 16620, 16620, 16620, 17340, 17340, 17100, 18450, 18420, 18420];
+const paidIn = 5400;
+const PLOT = { x0: 74, x1: 600, y0: 232, y1: 78, min: 12000, max: 25000 };
+const px = (i: number) => PLOT.x0 + (i * (PLOT.x1 - PLOT.x0)) / (balances.length - 1);
+const py = (v: number) => PLOT.y0 - ((v - PLOT.min) / (PLOT.max - PLOT.min)) * (PLOT.y0 - PLOT.y1);
+const linePath = balances.map((v, i) => `${i ? "L" : "M"}${px(i).toFixed(1)} ${py(v).toFixed(1)}`).join(" ");
+const areaPath = `${linePath} L${PLOT.x1} ${PLOT.y0} L${PLOT.x0} ${PLOT.y0} Z`;
+const last = { x: px(balances.length - 1), y: py(balances.at(-1)!), yPaid: py(balances.at(-1)! + paidIn) };
+const gbp = (v: number) => `£${v.toLocaleString("en-GB")}`;
+const balanceNow = gbp(balances.at(-1)!);
+const balancePaid = gbp(balances.at(-1)! + paidIn);
+const gridLines = [15000, 20000, 25000].map((v) => ({ y: py(v), label: `£${v / 1000}k` }));
+const dayTicks = [0, 7, 15].map((i) => ({ x: px(i), label: `${i + 1} Oct` }));
+
 const title = "crunch-mcp: talk to your Crunch books";
 const description =
   "An open-source MCP server for Crunch Accounting. Ask Claude and other AI assistants about your expenses, invoices, clients and bank accounts, and let them record receipts and raise invoices when you allow it. Runs in Docker.";
@@ -139,8 +156,8 @@ const connectSnippet = `claude mcp add --transport http crunch \\
 
     <main id="main">
       <!-- Hero -->
-      <section class="hero">
-        <svg class="mesh" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <section class="hero scene">
+        <svg class="scene-sky" viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
           <defs>
             <linearGradient id="link" x1="0" x2="1">
               <stop offset="0" stop-color="#84cc16" />
@@ -148,28 +165,117 @@ const connectSnippet = `claude mcp add --transport http crunch \\
               <stop offset="1" stop-color="#14b8a6" />
             </linearGradient>
           </defs>
-          <!-- Ledger rules, with a running balance climbing across them. -->
+          <!-- Ledger rules, with a running balance climbing faintly across them. -->
           <g class="rules">
-            <path d="M0 160 H1200" /><path d="M0 260 H1200" /><path d="M0 360 H1200" /><path d="M0 460 H1200" /><path d="M0 560 H1200" />
+            <path d="M0 160 H1200" /><path d="M0 260 H1200" /><path d="M0 360 H1200" /><path d="M0 460 H1200" />
           </g>
           <g class="links">
-            <path d="M60 600 L240 520 L400 560 L580 430 L760 470 L940 300 L1140 220" />
-            <path d="M240 520 L300 330 L520 250 L580 430" />
-            <path d="M760 470 L860 640" />
-            <path d="M940 300 L1000 120" />
-          </g>
-          <g class="pulses">
-            <path d="M60 600 L240 520 L400 560 L580 430 L760 470 L940 300 L1140 220" />
-            <path d="M240 520 L300 330 L520 250 L580 430" />
-            <path d="M940 300 L1000 120" />
+            <path d="M60 470 L240 400 L400 430 L580 330 L760 360 L940 230 L1140 160" />
+            <path d="M240 400 L300 250 L520 190 L580 330" />
           </g>
           <g class="nodes">
-            <circle cx="60" cy="600" r="5" /><circle cx="240" cy="520" r="8" /><circle cx="400" cy="560" r="5" />
-            <circle cx="580" cy="430" r="10" /><circle cx="760" cy="470" r="6" /><circle cx="940" cy="300" r="9" />
-            <circle cx="1140" cy="220" r="6" /><circle cx="300" cy="330" r="5" /><circle cx="520" cy="250" r="6" />
-            <circle cx="860" cy="640" r="4" /><circle cx="1000" cy="120" r="5" />
+            <circle cx="60" cy="470" r="4" /><circle cx="240" cy="400" r="6" /><circle cx="580" cy="330" r="7" />
+            <circle cx="940" cy="230" r="6" /><circle cx="1140" cy="160" r="5" /><circle cx="300" cy="250" r="4" /><circle cx="520" cy="190" r="5" />
           </g>
         </svg>
+        <div class="scene-desk" aria-hidden="true"></div>
+
+        <!-- The books on the desk: the chat steps switch their states. -->
+        <div class="scene-art" aria-hidden="true">
+          <svg class="s-chart" viewBox="0 0 660 290">
+            <defs>
+              <linearGradient id="bal-line" x1="0" x2="1">
+                <stop offset="0" stop-color="#84cc16" />
+                <stop offset="0.55" stop-color="#10b981" />
+                <stop offset="1" stop-color="#14b8a6" />
+              </linearGradient>
+              <linearGradient id="bal-area" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#10b981" stop-opacity="0.35" />
+                <stop offset="1" stop-color="#10b981" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <rect class="card" x="1" y="1" width="658" height="288" rx="20" />
+            <text class="c-title" x="26" y="40">Business account</text>
+            <text class="c-sub" x="26" y="60">October, month to date</text>
+            <text class="bal now" x="634" y="46" text-anchor="end">{balanceNow}</text>
+            <text class="bal paid" x="634" y="46" text-anchor="end">{balancePaid}</text>
+            <g class="grid">
+              {gridLines.map((g) => (
+                <>
+                  <line x1={PLOT.x0} x2={PLOT.x1 + 14} y1={g.y} y2={g.y} />
+                  <text x={PLOT.x0 - 10} y={g.y + 4} text-anchor="end">{g.label}</text>
+                </>
+              ))}
+              <line class="base" x1={PLOT.x0} x2={PLOT.x1 + 14} y1={PLOT.y0} y2={PLOT.y0} />
+              {dayTicks.map((t) => <text x={t.x} y={PLOT.y0 + 22} text-anchor="middle">{t.label}</text>)}
+            </g>
+            <path class="area" d={areaPath} />
+            <path class="line" d={linePath} pathLength="1" />
+            <circle class="end" cx={last.x} cy={last.y} r="5" />
+            <g class="jump">
+              <path d={`M${last.x} ${last.y} V${last.yPaid}`} pathLength="1" />
+              <circle cx={last.x} cy={last.yPaid} r="6" />
+              <text x={last.x - 12} y={last.yPaid + 5} text-anchor="end">+{gbp(paidIn)} Acme</text>
+            </g>
+            <text class="caption" x="634" y="276" text-anchor="end">example data</text>
+          </svg>
+
+          <svg class="s-inv" viewBox="0 0 280 290">
+            <g class="paper back" transform="translate(34 -4) rotate(2 120 80)">
+              <rect width="226" height="200" rx="12" />
+              <text class="p-id" x="20" y="34">INV-0044</text>
+              <text class="p-amt-s" x="206" y="34" text-anchor="end">£1,020</text>
+            </g>
+            <g class="paper back" transform="translate(12 46) rotate(-2 120 80)">
+              <rect width="226" height="200" rx="12" />
+              <text class="p-id" x="20" y="34">INV-0043</text>
+              <text class="p-amt-s" x="206" y="34" text-anchor="end">£720</text>
+            </g>
+            <g class="paper" transform="translate(24 88)">
+              <rect width="232" height="200" rx="12" />
+              <text class="p-kicker" x="20" y="32">INVOICE</text>
+              <text class="p-id" x="20" y="56">INV-0042</text>
+              <text class="p-who" x="20" y="78">Acme Ltd · consulting</text>
+              <line class="p-rule" x1="20" x2="212" y1="96" y2="96" />
+              <text class="p-amt" x="20" y="134">£5,400</text>
+              <text class="p-due" x="20" y="176">Due 12 Sep</text>
+              <text class="p-paid" x="20" y="176">Paid 15 Oct</text>
+              <g transform="translate(156 162) rotate(-10)">
+                <g class="stamp overdue"><rect x="-56" y="-19" width="112" height="38" rx="6" /><text y="7" text-anchor="middle">OVERDUE</text></g>
+                <g class="stamp paid"><rect x="-44" y="-19" width="88" height="38" rx="6" /><text y="7" text-anchor="middle">PAID</text></g>
+              </g>
+            </g>
+          </svg>
+
+          <svg class="s-exp" viewBox="0 0 240 290">
+            <g class="paper back" transform="translate(14 8) rotate(-4 106 70)">
+              <rect width="212" height="150" rx="12" />
+              <text class="p-kicker" x="18" y="30">EXPENSE</text>
+              <text class="p-id" x="18" y="54">Adobe</text>
+              <text class="p-who" x="18" y="74">Software · £56.99</text>
+              <path class="slip" d="M146 22 H192 V96 l-5.75 -6 l-5.75 6 l-5.75 -6 l-5.75 6 l-5.75 -6 l-5.75 6 l-5.75 -6 l-5.75 6 Z" />
+              <path class="slip-line" d="M154 38 H184 M154 50 H178 M154 62 H184 M154 78 H172" />
+              <path class="clip ok" d="M158 34 V10 a6 6 0 0 1 12 0 V38 a3.5 3.5 0 0 1 -7 0 V16" />
+              <circle class="tick-bg" cx="192" cy="96" r="11" />
+              <path class="tick" d="M186.5 96.5 l3.8 3.8 l7 -7.6" />
+            </g>
+            <g class="paper" transform="translate(14 112)">
+              <rect width="212" height="166" rx="12" />
+              <text class="p-kicker" x="18" y="30">EXPENSE</text>
+              <text class="p-id" x="18" y="54">LNER</text>
+              <text class="p-who" x="18" y="74">Train fare · 3 Oct</text>
+              <text class="p-amt-s" x="18" y="106">£186.00</text>
+              <rect class="slot" x="142" y="22" width="52" height="72" rx="6" />
+              <path class="clip missing" d="M162 34 V18 a6 6 0 0 1 12 0 V44" />
+              <g class="warn">
+                <rect x="10" y="124" width="192" height="30" rx="15" />
+                <circle cx="30" cy="139" r="9" />
+                <text class="bang" x="30" y="143.5" text-anchor="middle">!</text>
+                <text x="48" y="144">missing receipt</text>
+              </g>
+            </g>
+          </svg>
+        </div>
 
         <div class="wrap hero-grid">
           <div class="hero-copy">
@@ -190,26 +296,26 @@ const connectSnippet = `claude mcp add --transport http crunch \\
           </div>
 
           <div class="chat" aria-label="Example conversation">
-            <div class="chat-bar"><span></span><span></span><span></span><em>Claude · crunch</em></div>
+            <div class="chat-bar"><span></span><span></span><span></span><em>Claude · crunch · writes on</em></div>
             <div class="chat-body" id="chat">
-              <div class="msg user" data-step="0">Which invoices are overdue, and who should I chase?</div>
+              <div class="msg user" data-step="0">How's the business looking this month?</div>
               <div class="calls" data-step="1">
-                <span class="call"><i></i>crunch_list_invoices<b>all · unpaid</b></span>
-                <span class="call"><i></i>crunch_get_invoice<b>INV-0042</b></span>
-                <span class="call"><i></i>crunch_get_client<b>Acme Ltd</b></span>
+                <span class="call"><i></i>crunch_list_bank_accounts<b>balances</b></span>
+                <span class="call"><i></i>crunch_list_invoices<b>unpaid</b></span>
+                <span class="call"><i></i>crunch_list_expenses<b>October</b></span>
               </div>
               <div class="msg bot" data-step="2">
-                Three invoices are overdue, <mark>£7,140</mark> in total. The one to chase is <strong>INV-0042</strong> to
-                <strong>Acme Ltd</strong>: £5,400 for August's consulting, now <mark>34 days late</mark> with no payment recorded.
-                <br /><br />The other two are only 4 and 6 days late. Shall I send Acme a copy with a friendly reminder?
+                Pretty good. The business account is at <mark>£18,420</mark>, up £3,100 this month. Three invoices are unpaid
+                (<mark>£7,140</mark>), and Acme's <strong>INV-0042</strong> for £5,400 is <mark>34 days overdue</mark>. One expense, a £186
+                train fare, is missing its receipt.
               </div>
-              <div class="msg user" data-step="3">Yes please, keep it polite.</div>
+              <div class="msg user" data-step="3">Acme paid that yesterday. Can you record it?</div>
               <div class="calls" data-step="4">
-                <span class="call email"><i></i>crunch_email_invoice<b>INV-0042 → accounts@acme</b></span>
+                <span class="call write"><i></i>crunch_add_invoice_payment<b>INV-0042 · £5,400</b></span>
               </div>
               <div class="msg bot" data-step="5">
-                Sent. Acme's accounts team has INV-0042 again, with a short note that it was due on <mark>11 September</mark>. When
-                they pay, tell me the date and I'll record the payment. ✅
+                Recorded. INV-0042 is now <mark>paid</mark>, £5,400 on 15 October, and the business account shows
+                <mark>£23,820</mark>. The other two invoices, £1,740, aren't due yet.
               </div>
             </div>
           </div>
@@ -457,31 +563,50 @@ const connectSnippet = `claude mcp add --transport http crunch \\
         });
       }
 
-      // Play the example conversation once it scrolls into view.
+      // Play the example conversation when the chat is on screen, and loop it. Steps also switch
+      // the desk scene: the first reply draws the balance and flags the overdue invoice and the
+      // missing receipt, the second marks the invoice paid and lifts the balance.
+      const hero = document.querySelector<HTMLElement>(".hero.scene");
       const chat = document.getElementById("chat");
       const steps = chat ? [...chat.querySelectorAll<HTMLElement>("[data-step]")] : [];
+      const sceneAt: Record<number, string> = { 2: "books-on", 5: "paid-on" };
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (chat && !reduce) {
+      if (hero && chat && reduce) {
+        hero.classList.add(...Object.values(sceneAt));
+      } else if (hero && chat) {
         chat.classList.add("animate");
         const delays = [300, 900, 1900, 1900, 900, 1700];
+        let timers: number[] = [];
+        let visible = false;
+        let running = false;
+        const reset = () => {
+          timers.forEach(clearTimeout);
+          timers = [];
+          steps.forEach((el) => el.classList.remove("shown"));
+          chat.querySelectorAll(".call").forEach((c) => c.classList.remove("done"));
+          hero.classList.remove(...Object.values(sceneAt));
+        };
         const play = () => {
+          running = true;
+          reset();
           let t = 0;
           steps.forEach((el, i) => {
             t += delays[i] ?? 1000;
-            setTimeout(() => {
+            timers.push(window.setTimeout(() => {
               el.classList.add("shown");
+              if (sceneAt[i]) hero.classList.add(sceneAt[i]);
               for (const [j, c] of [...el.querySelectorAll<HTMLElement>(".call")].entries()) {
-                setTimeout(() => c.classList.add("done"), 450 + j * 380);
+                timers.push(window.setTimeout(() => c.classList.add("done"), 450 + j * 380));
               }
-            }, t);
+            }, t));
           });
+          // Hold the finished scene for a while, then start again if the chat is still in view.
+          timers.push(window.setTimeout(() => (visible ? play() : (running = false)), t + 7000));
         };
-        new IntersectionObserver((entries, obs) => {
-          if (entries.some((e) => e.isIntersecting)) {
-            play();
-            obs.disconnect();
-          }
-        }, { threshold: 0.35 }).observe(chat);
+        new IntersectionObserver((entries) => {
+          visible = entries.some((e) => e.isIntersecting);
+          if (visible && !running) play();
+        }, { threshold: 0.2 }).observe(chat);
       }
     </script>
 
@@ -568,16 +693,89 @@ const connectSnippet = `claude mcp add --transport http crunch \\
         mask-image: radial-gradient(60% 60% at 50% 40%, #000 30%, transparent 80%);
         opacity: 0.3;
       }
-      .mesh { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.55; }
-      .mesh .rules path { fill: none; stroke: #6ee7b7; stroke-opacity: 0.12; stroke-width: 1; stroke-dasharray: 2 6; }
-      .mesh .links path { fill: none; stroke: url(#link); stroke-width: 1.4; stroke-opacity: 0.4; stroke-linejoin: round; }
-      .mesh .pulses path { fill: none; stroke: #d9f99d; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 6 600; animation: pulse 7s linear infinite; }
-      .mesh .pulses path:nth-child(2) { animation-delay: -2.5s; animation-duration: 9s; }
-      .mesh .pulses path:nth-child(3) { animation-delay: -4s; animation-duration: 5s; }
-      .mesh .nodes circle { fill: #a7f3d0; filter: drop-shadow(0 0 6px #34d399); animation: blink 4s ease-in-out infinite; }
-      .mesh .nodes circle:nth-child(3n) { animation-delay: -1.3s; }
-      .mesh .nodes circle:nth-child(3n + 1) { animation-delay: -2.6s; }
-      @keyframes pulse { from { stroke-dashoffset: 600; } to { stroke-dashoffset: 0; } }
+      /* The illustrated scene: a faint ledger sky behind the hero and the books laid out on a desk
+         along the bottom. The chat steps switch its states. */
+      .hero.scene { padding-top: 72px; padding-bottom: 300px; }
+      .hero.scene .chat-body { min-height: 0; }
+      .scene-sky { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.45; }
+      .scene-sky .rules path { fill: none; stroke: #6ee7b7; stroke-opacity: 0.12; stroke-width: 1; stroke-dasharray: 2 6; }
+      .scene-sky .links path { fill: none; stroke: url(#link); stroke-width: 1.4; stroke-opacity: 0.35; stroke-linejoin: round; }
+      .scene-sky .nodes circle { fill: #a7f3d0; filter: drop-shadow(0 0 6px #34d399); animation: blink 4s ease-in-out infinite; }
+      .scene-sky .nodes circle:nth-child(2n) { animation-delay: -2s; }
+      .scene-desk {
+        position: absolute; inset: auto 0 0 0; height: 170px; z-index: -1;
+        background: linear-gradient(180deg, rgba(16, 185, 129, 0.07), rgba(4, 12, 9, 0.6));
+        border-top: 1px solid rgba(110, 231, 183, 0.14);
+      }
+      .scene-art {
+        position: absolute; left: 50%; bottom: 24px; width: 1440px; height: 250px; transform: translateX(-50%);
+        display: flex; align-items: flex-end; justify-content: center; gap: 56px;
+      }
+      .scene-art svg { display: block; height: 248px; width: auto; overflow: visible; filter: drop-shadow(0 24px 30px rgba(0, 0, 0, 0.45)); }
+      .scene-art .card { fill: rgba(10, 24, 19, 0.88); stroke: rgba(110, 231, 183, 0.22); }
+      .scene-art .c-title { fill: var(--text); font: 600 18px var(--display); }
+      .scene-art .c-sub, .scene-art .caption { fill: var(--muted); font: 13px var(--sans); }
+      .scene-art .caption { font-size: 12px; font-style: italic; opacity: 0.8; }
+      .scene-art .bal { fill: #d9f99d; font: 600 28px var(--display); letter-spacing: -0.02em; opacity: 0; transition: opacity 0.6s ease; }
+      .scene-art .grid line { stroke: rgba(255, 255, 255, 0.08); stroke-dasharray: 3 5; }
+      .scene-art .grid line.base { stroke: rgba(255, 255, 255, 0.2); stroke-dasharray: none; }
+      .scene-art .grid text { fill: var(--muted); font: 12.5px var(--mono); }
+      .scene-art .line { fill: none; stroke: url(#bal-line); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.8s ease; }
+      .scene-art .area { fill: url(#bal-area); opacity: 0; transition: opacity 1s ease 0.8s; }
+      .scene-art .end { fill: #5eead4; opacity: 0; transition: opacity 0.4s ease 1.6s; }
+      .scene-art .jump { opacity: 0; transition: opacity 0.4s ease; }
+      .scene-art .jump path { fill: none; stroke: #a3e635; stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0.9s ease; }
+      .scene-art .jump circle { fill: #a3e635; filter: drop-shadow(0 0 8px #84cc16); }
+      .scene-art .jump text { fill: #d9f99d; font: 600 14px var(--mono); }
+      .hero.books-on .scene-art .line { stroke-dashoffset: 0; }
+      .hero.books-on .scene-art .area, .hero.books-on .scene-art .end, .hero.books-on .scene-art .bal.now { opacity: 1; }
+      .hero.paid-on .scene-art .bal.now { opacity: 0; }
+      .hero.paid-on .scene-art .bal.paid, .hero.paid-on .scene-art .jump { opacity: 1; }
+      .hero.paid-on .scene-art .jump path { stroke-dashoffset: 0; }
+
+      /* Paper: invoices and expenses */
+      .scene-art .paper > rect { fill: #e4eee9; stroke: rgba(7, 16, 13, 0.25); }
+      .scene-art .paper.back > rect { fill: #b9cbc3; }
+      .scene-art :where(.paper text) { fill: #0b1612; font-family: var(--sans); }
+      .scene-art .p-kicker { font-size: 11.5px; font-weight: 600; letter-spacing: 0.14em; opacity: 0.55; }
+      .scene-art .p-id { font: 700 18px var(--display); }
+      .scene-art .p-who { font-size: 13.5px; opacity: 0.75; }
+      .scene-art .p-amt { font: 700 30px var(--display); letter-spacing: -0.02em; }
+      .scene-art .p-amt-s { font: 600 16px var(--mono); }
+      .scene-art .p-rule { stroke: rgba(7, 16, 13, 0.18); }
+      .scene-art .p-due, .scene-art .p-paid { font-size: 14px; font-weight: 600; transition: fill 0.6s ease, opacity 0.6s ease; }
+      .scene-art .p-due { fill: #4b5d55; }
+      .scene-art .p-paid { fill: #047857; opacity: 0; }
+      .scene-art .stamp { opacity: 0; transform: scale(1.5); transform-box: fill-box; transform-origin: center; transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.3, 1.4, 0.6, 1); }
+      .scene-art .stamp rect { fill: rgba(255, 255, 255, 0.35); stroke-width: 3; }
+      .scene-art .stamp text { font: 700 19px var(--mono); letter-spacing: 0.08em; }
+      .scene-art .stamp.overdue rect { stroke: #dc2626; }
+      .scene-art .stamp.overdue text { fill: #dc2626; }
+      .scene-art .stamp.paid rect { stroke: #059669; }
+      .scene-art .stamp.paid text { fill: #059669; }
+      .hero.books-on .scene-art .stamp.overdue { opacity: 1; transform: none; }
+      .hero.books-on .scene-art .p-due { fill: #b45309; }
+      .hero.paid-on .scene-art .stamp.overdue { opacity: 0; transform: scale(0.8); }
+      .hero.paid-on .scene-art .stamp.paid { opacity: 1; transform: none; }
+      .hero.paid-on .scene-art .p-due { opacity: 0; }
+      .hero.paid-on .scene-art .p-paid { opacity: 1; }
+      .scene-art .slip { fill: #fff; stroke: rgba(7, 16, 13, 0.2); }
+      .scene-art .slip-line { stroke: rgba(7, 16, 13, 0.3); stroke-width: 2; stroke-linecap: round; }
+      .scene-art .clip { fill: none; stroke-width: 3; stroke-linecap: round; }
+      .scene-art .clip.ok { stroke: #059669; }
+      .scene-art .clip.missing { stroke: rgba(7, 16, 13, 0.3); stroke-dasharray: 4 4; }
+      .scene-art .slot { fill: rgba(7, 16, 13, 0.04); stroke: rgba(7, 16, 13, 0.3); stroke-dasharray: 5 4; }
+      .scene-art .tick-bg { fill: #059669; }
+      .scene-art .tick { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .scene-art .warn { opacity: 0; transform: translateY(6px); transition: opacity 0.5s ease 0.6s, transform 0.5s ease 0.6s; }
+      .scene-art .warn rect { fill: #fef3c7; stroke: #f59e0b; stroke-width: 1.5; }
+      .scene-art .warn circle { fill: #f59e0b; }
+      .scene-art .warn text { fill: #92400e; font-size: 14px; font-weight: 600; }
+      .scene-art .warn .bang { fill: #fff; font: 700 13px var(--sans); }
+      .hero.books-on .scene-art .warn { opacity: 1; transform: none; }
+      .hero.books-on .scene-art .clip.missing { stroke: #d97706; }
+      .hero.books-on .scene-art .slot { stroke: #d97706; fill: rgba(245, 158, 11, 0.08); }
+      .hero.scene .hero-grid { grid-template-columns: minmax(0, 1fr) 460px; align-items: start; }
       @keyframes blink { 50% { opacity: 0.45; } }
 
       .hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 56px; align-items: center; }
@@ -616,8 +814,8 @@ const connectSnippet = `claude mcp add --transport http crunch \\
 
       /* Chat demo */
       .chat {
-        border-radius: 20px; border: 1px solid var(--line);
-        background: linear-gradient(180deg, rgba(16, 34, 27, 0.9), rgba(8, 18, 14, 0.92));
+        border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(10, 24, 19, 0.84); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
         box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.02) inset, 0 0 80px -20px rgba(16, 185, 129, 0.3);
         overflow: hidden;
       }
@@ -774,6 +972,22 @@ const connectSnippet = `claude mcp add --transport http crunch \\
         .examples, .features { grid-template-columns: repeat(2, 1fr); }
         .steps { grid-template-columns: minmax(0, 1fr); }
         .chat-body { min-height: 0; }
+        .hero.scene { padding-bottom: 56px; display: flex; flex-direction: column; }
+        .hero.scene .hero-grid { grid-template-columns: minmax(0, 1fr); }
+        .scene-desk { display: none; }
+        .scene-art {
+          order: 2; position: relative; left: auto; bottom: auto; transform: none; width: min(640px, 100% - 32px); height: auto;
+          margin: 40px auto 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; align-items: end;
+        }
+        .scene-art svg { width: 100%; height: auto; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.4)); }
+        .scene-art .s-chart { grid-column: 1 / -1; }
+        /* The chart is drawn at about half size here, so its labels get bigger to stay legible. */
+        .scene-art .c-title { font-size: 28px; }
+        .scene-art .c-sub { display: none; }
+        .scene-art .bal { font-size: 40px; }
+        .scene-art .grid text { font-size: 20px; }
+        .scene-art .jump text { font-size: 22px; }
+        .scene-art .caption { font-size: 18px; }
       }
       @media (max-width: 640px) {
         .wrap { width: calc(100% - 32px); }
