@@ -45,11 +45,12 @@ Login status and the OAuth login flow, the logged-in user, company details (VAT 
 
 🟢 read
 
-Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to (or just the code).
+Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `redirected_url` | string | yes | The full URL from the browser's address bar after clicking Allow (it contains code= and state=), or just the code |
+| `state` | string |  | The state crunch_auth_start returned; only needed when redirected_url is just the code |
 
 ### crunch_auth_start
 

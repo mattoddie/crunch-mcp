@@ -49,6 +49,7 @@ func summarizeCompany(c Obj) Obj {
 
 type authCompleteArgs struct {
 	RedirectedURL string `json:"redirected_url" jsonschema:"The full URL from the browser's address bar after clicking Allow (it contains code= and state=), or just the code"`
+	State         string `json:"state,omitempty" jsonschema:"The state crunch_auth_start returned; only needed when redirected_url is just the code"`
 }
 
 type rawArgs struct {
@@ -84,10 +85,10 @@ func registerAccount(c *Context) {
 
 	add(c, Def{
 		Toolset: "account", Name: "crunch_auth_complete", Title: "Finish Crunch login",
-		Description: "Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to (or just the code).",
+		Description: "Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned.",
 		ReadOnly:    boolPtr(false), Destructive: boolPtr(false),
 	}, func(ctx context.Context, a authCompleteArgs) (any, error) {
-		res, err := cl.Auth.CompleteLogin(ctx, a.RedirectedURL)
+		res, err := cl.Auth.CompleteLogin(ctx, a.RedirectedURL, a.State)
 		if err != nil {
 			return nil, err
 		}

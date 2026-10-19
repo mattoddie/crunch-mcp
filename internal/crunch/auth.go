@@ -406,12 +406,14 @@ func (a *Auth) PendingState(state string) bool {
 
 var urlish = regexp.MustCompile(`(?i)^https?://|^/|code=`)
 
-// CompleteLogin finishes a login started with StartLogin. It accepts the
-// full URL the browser was redirected to (preferred, as it carries the state)
-// or just the code.
-func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode string) (map[string]any, error) {
+// CompleteLogin finishes a login started with StartLogin. It accepts the full URL the
+// browser was redirected to (preferred, as it carries the state) or just the code, in
+// which case state must be the one StartLogin returned. A code without the state of a
+// pending login is refused, so a code from someone else's login can't be slipped in.
+func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode, state string) (map[string]any, error) {
 	input := strings.TrimSpace(redirectedURLOrCode)
-	var code, state string
+	state = strings.TrimSpace(state)
+	var code string
 	if urlish.MatchString(input) {
 		// Crunch's docs show the code appended with "&" even when the redirect URI has no query, so parse leniently.
 		query := input
@@ -422,7 +424,12 @@ func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode string) (m
 		}
 		query, _, _ = strings.Cut(query, "#")
 		params, _ := url.ParseQuery(query)
-		state = params.Get("state")
+		if s := params.Get("state"); s != "" {
+			if state != "" && s != state {
+				return nil, errors.New("the state in the URL doesn't match the state given. Start again")
+			}
+			state = s
+		}
 		if state != "" && !a.PendingState(state) {
 			return nil, errors.New("this login link has expired or wasn't started by this server (the state doesn't match). Start again")
 		}
@@ -439,32 +446,17 @@ func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode string) (m
 	if code == "" {
 		return nil, errors.New("no authorisation code found. Paste the whole URL your browser was sent to after you clicked Allow")
 	}
+	if state == "" {
+		return nil, errors.New("the login's state is missing. Paste the whole URL your browser was sent to after you clicked Allow (it contains state=), or pass the state that starting the login returned")
+	}
 
 	a.mu.Lock()
-	var p pendingLogin
-	var found bool
-	if state != "" {
-		p, found = a.pending[state]
-		delete(a.pending, state)
-		if !found {
-			a.mu.Unlock()
-			return nil, errors.New("this login link has expired or wasn't started by this server (the state doesn't match). Start again")
-		}
-	} else {
-		// Only a bare code: use the most recent login attempt.
-		var latest string
-		for s, x := range a.pending {
-			if !found || x.created.After(p.created) {
-				latest, p, found = s, x, true
-			}
-		}
-		if !found {
-			a.mu.Unlock()
-			return nil, errors.New("there is no login in progress. Start one first")
-		}
-		delete(a.pending, latest)
-	}
+	p, found := a.pending[state]
+	delete(a.pending, state)
 	a.mu.Unlock()
+	if !found {
+		return nil, errors.New("this login link has expired or wasn't started by this server (the state doesn't match). Start again")
+	}
 	if time.Since(p.created) > pendingLoginTTL {
 		return nil, errors.New("this login attempt has expired. Start again")
 	}

@@ -198,7 +198,7 @@ func TestLoginFlow(t *testing.T) {
 	challenge, state := challengeOf(t, start.URL)
 	code := m.IssueCode(challenge)
 	// Crunch's docs show the code appended with "&"; accept that form too.
-	res, err := c.Auth.CompleteLogin(context.Background(), "http://127.0.0.1:8976/callback&code="+code+"&state="+state)
+	res, err := c.Auth.CompleteLogin(context.Background(), "http://127.0.0.1:8976/callback&code="+code+"&state="+state, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestLoginFlow(t *testing.T) {
 		t.Error("tokens not saved")
 	}
 	// The state is single-use.
-	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/callback?code="+code+"&state="+state); err == nil || !strings.Contains(err.Error(), "state") {
+	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/callback?code="+code+"&state="+state, ""); err == nil || !strings.Contains(err.Error(), "state") {
 		t.Errorf("reused state: %v", err)
 	}
 }
@@ -226,16 +226,29 @@ func TestLoginWithBareCodeAndErrors(t *testing.T) {
 	m := crunchtest.New()
 	defer m.Server.Close()
 	c, _ := newClient(t, m, nil)
-	if _, err := c.Auth.CompleteLogin(context.Background(), "abc"); err == nil || !strings.Contains(err.Error(), "no login in progress") {
+	if _, err := c.Auth.CompleteLogin(context.Background(), "abc", "forged"); err == nil || !strings.Contains(err.Error(), "state doesn't match") {
 		t.Errorf("no pending login: %v", err)
 	}
 	start, _ := c.Auth.StartLogin()
-	challenge, _ := challengeOf(t, start.URL)
-	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?error=access_denied&error_description=User+said+no"); err == nil || !strings.Contains(err.Error(), "User said no") {
+	challenge, state := challengeOf(t, start.URL)
+	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?error=access_denied&error_description=User+said+no", ""); err == nil || !strings.Contains(err.Error(), "User said no") {
 		t.Errorf("denied: %v", err)
 	}
-	if _, err := c.Auth.CompleteLogin(context.Background(), m.IssueCode(challenge)); err != nil {
-		t.Errorf("bare code: %v", err)
+	// A bare code, or a URL without a state, is refused: it could be from someone else's login.
+	code := m.IssueCode(challenge)
+	for _, input := range []string{code, "http://x/cb?code=" + code} {
+		if _, err := c.Auth.CompleteLogin(context.Background(), input, ""); err == nil || !strings.Contains(err.Error(), "state is missing") {
+			t.Errorf("%s without a state: %v", input, err)
+		}
+	}
+	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?code="+code+"&state="+state, "other"); err == nil || !strings.Contains(err.Error(), "doesn't match") {
+		t.Errorf("conflicting states: %v", err)
+	}
+	if !c.Auth.PendingState(state) {
+		t.Fatal("refused attempts must not use up the login")
+	}
+	if _, err := c.Auth.CompleteLogin(context.Background(), code, state); err != nil {
+		t.Errorf("bare code with its state: %v", err)
 	}
 }
 
@@ -269,7 +282,7 @@ func TestPicksUpLoginFromAnotherProcess(t *testing.T) {
 	}
 	start, _ := cli.Auth.StartLogin()
 	challenge, state := challengeOf(t, start.URL)
-	if _, err := cli.Auth.CompleteLogin(context.Background(), "http://x/cb?code="+m.IssueCode(challenge)+"&state="+state); err != nil {
+	if _, err := cli.Auth.CompleteLogin(context.Background(), "http://x/cb?code="+m.IssueCode(challenge)+"&state="+state, ""); err != nil {
 		t.Fatal(err)
 	}
 	saved, _ := crunch.TokenStore{File: file}.Load()
@@ -333,10 +346,10 @@ func TestPendingStateAndErrorsNeedAValidState(t *testing.T) {
 		t.Error("PendingState")
 	}
 	// An error with a state this server didn't issue is not trusted.
-	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?error=access_denied&state=forged"); err == nil || !strings.Contains(err.Error(), "state doesn't match") {
+	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?error=access_denied&state=forged", ""); err == nil || !strings.Contains(err.Error(), "state doesn't match") {
 		t.Errorf("forged error: %v", err)
 	}
-	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?code=abc&state=forged"); err == nil || !strings.Contains(err.Error(), "state doesn't match") {
+	if _, err := c.Auth.CompleteLogin(context.Background(), "http://x/cb?code=abc&state=forged", ""); err == nil || !strings.Contains(err.Error(), "state doesn't match") {
 		t.Errorf("forged state: %v", err)
 	}
 	if !c.Auth.PendingState(start.State) {

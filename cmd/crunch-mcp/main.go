@@ -198,7 +198,7 @@ func login() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	res, err := client.Auth.CompleteLogin(ctx, redirected)
+	res, err := client.Auth.CompleteLogin(ctx, redirected, start.State)
 	if err != nil {
 		return err
 	}
