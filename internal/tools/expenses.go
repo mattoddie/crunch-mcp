@@ -204,7 +204,8 @@ type addExpensePaymentArgs struct {
 
 type removeExpensePaymentArgs struct {
 	ExpenseID int64  `json:"expense_id" jsonschema:"Expense ID (see crunch_list_expenses)"`
-	PaymentID *int64 `json:"payment_id,omitempty" jsonschema:"Payment to remove; omit to remove all of the expense's payments"`
+	PaymentID *int64 `json:"payment_id,omitempty" jsonschema:"Payment to remove (see crunch_get_expense). Required unless all is true"`
+	All       bool   `json:"all,omitempty" jsonschema:"Remove every payment of the expense instead of one; payment_id must then be left out"`
 }
 
 type addAttachmentArgs struct {
@@ -406,9 +407,15 @@ func registerExpenses(c *Context) {
 
 	add(c, Def{
 		Toolset: "expenses", Name: "crunch_remove_expense_payment", Title: "Remove expense payment",
-		Description: "Remove a payment from an expense, leaving the expense itself (it becomes unpaid or part-paid). Reconciled payments can't be removed. See crunch_get_expense for payment IDs.",
+		Description: "Remove a payment from an expense (or all of its payments with all=true), leaving the expense itself (it becomes unpaid or part-paid). Reconciled payments can't be removed. See crunch_get_expense for payment IDs.",
 		Gate:        Delete,
 	}, func(ctx context.Context, a removeExpensePaymentArgs) (any, error) {
+		switch {
+		case a.PaymentID == nil && !a.All:
+			return nil, errors.New("give the payment_id to remove (see crunch_get_expense), or all=true to remove every payment")
+		case a.PaymentID != nil && a.All:
+			return nil, errors.New("give either payment_id or all=true, not both")
+		}
 		current, err := getExpense(ctx, a.ExpenseID)
 		if err != nil {
 			return nil, err

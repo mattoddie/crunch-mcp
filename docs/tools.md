@@ -731,12 +731,13 @@ List expenses (purchases, receipts and bills), newest first, filtered by supplie
 
 🔴 delete · destructive
 
-Remove a payment from an expense, leaving the expense itself (it becomes unpaid or part-paid). Reconciled payments can't be removed. See crunch_get_expense for payment IDs.
+Remove a payment from an expense (or all of its payments with all=true), leaving the expense itself (it becomes unpaid or part-paid). Reconciled payments can't be removed. See crunch_get_expense for payment IDs.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
-| `payment_id` | integer |  | Payment to remove; omit to remove all of the expense's payments |
+| `all` | boolean |  | Remove every payment of the expense instead of one; payment_id must then be left out |
+| `payment_id` | integer |  | Payment to remove (see crunch_get_expense). Required unless all is true |
 
 ### crunch_update_expense
 
