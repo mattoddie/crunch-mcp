@@ -292,3 +292,30 @@ func TestUpdatesStayOnTheRecordInThePath(t *testing.T) {
 	}
 	env.call("crunch_api_request", map[string]any{"method": "PUT", "path": "/invoices/500", "body": jsonObj(t, invoiceFixture)})
 }
+
+// The raw tool's email and delete switches also look at the query and at POST bodies.
+func TestRawEmailAndDeleteChecksCoverQueryAndPost(t *testing.T) {
+	env := newEnv(t, writesOnly())
+	env.mock.On("GET", "/invoices/500", func(crunchtest.Request, []string) (int, any) { return 200, jsonObj(t, invoiceFixture) })
+	for _, c := range []struct {
+		args map[string]any
+		want string
+	}{
+		{map[string]any{"method": "POST", "path": "/invoices/500/issue", "query": map[string]any{"sendReminders": true}}, "CRUNCH_ALLOW_EMAIL"},
+		{map[string]any{"method": "POST", "path": "/invoices/500/issue", "query": map[string]any{"sendEmail": "true"}}, "CRUNCH_ALLOW_EMAIL"},
+		{map[string]any{"method": "PUT", "path": "/invoices/500", "query": map[string]any{"notifyByEmail": "1"}}, "CRUNCH_ALLOW_EMAIL"},
+		{map[string]any{"method": "POST", "path": "/invoices", "body": map[string]any{"sendToCustomer": true}}, "CRUNCH_ALLOW_EMAIL"},
+		{map[string]any{"method": "POST", "path": "/invoices/500", "body": map[string]any{"reference": "x"}}, "payments (id 600)"},
+	} {
+		if msg := env.callErr("crunch_api_request", c.args); !strings.Contains(msg, c.want) {
+			t.Errorf("%v: %s", c.args, msg)
+		}
+	}
+	if env.mock.Last("POST") != nil || env.mock.Last("PUT") != nil {
+		t.Fatal("a refused request reached Crunch")
+	}
+	// Reading with an email filter, and sending a client's email address, are fine.
+	env.mock.On("GET", "/clients/list", crunchtest.JSON([]any{}))
+	env.call("crunch_api_request", map[string]any{"path": "/clients/list", "query": map[string]any{"email": "sam@example.com"}})
+	env.call("crunch_api_request", map[string]any{"method": "POST", "path": "/clients", "body": map[string]any{"name": "Example Ltd", "email": "sam@example.com", "sendReminders": false}})
+}
