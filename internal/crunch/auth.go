@@ -302,7 +302,13 @@ func (a *Auth) Refresh(ctx context.Context, rejected string) (string, error) {
 	if a.cfg.ClientID == "" {
 		return "", errors.New("CRUNCH_CLIENT_ID is required to refresh the access token")
 	}
-	res, err := a.tokenRequest(ctx, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}})
+	// Once the request is sent, Crunch may rotate the refresh token, and the old one then
+	// can't be used again (reusing it revokes the whole grant). So the exchange, and saving
+	// whatever comes back, must not be cut short when the tool call that triggered the
+	// refresh is cancelled: they get their own timeout instead.
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), a.cfg.Timeout)
+	defer cancel()
+	res, err := a.tokenRequest(rctx, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}})
 	if err != nil {
 		a.mu.Lock()
 		a.lastError = err.Error()

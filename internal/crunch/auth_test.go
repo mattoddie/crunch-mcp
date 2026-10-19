@@ -336,3 +336,25 @@ func TestPendingStateAndErrorsNeedAValidState(t *testing.T) {
 		t.Error("a forged callback must not use up the real login")
 	}
 }
+
+// A tool call cancelled while its refresh is in flight must not lose the rotated
+// refresh token: Crunch has already spent the old one, and reusing it revokes the grant.
+func TestCancelledRefreshStillSavesRotatedToken(t *testing.T) {
+	m := crunchtest.New()
+	defer m.Server.Close()
+	m.On("GET", "/user-details", crunchtest.JSON(map[string]any{}))
+	m.TokenDelay = 300 * time.Millisecond
+	c, file := newClient(t, m, func(c *config.Crunch) { c.RefreshToken = crunchtest.RefreshToken })
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_ = c.Get(ctx, "/user-details", nil, nil) // fails: the caller gave up
+	saved, err := crunch.TokenStore{File: file}.Load()
+	if err != nil || saved == nil || saved.RefreshToken == crunchtest.RefreshToken {
+		t.Fatalf("rotated refresh token not saved: %+v %v", saved, err)
+	}
+	m.TokenDelay = 0
+	m.RevokeAccess()
+	if err := c.Get(context.Background(), "/user-details", nil, nil); err != nil {
+		t.Errorf("next request: %v", err)
+	}
+}
