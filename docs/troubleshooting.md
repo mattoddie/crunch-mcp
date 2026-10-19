@@ -88,6 +88,10 @@ Crunch's token endpoint returns `404` when the request is malformed, for example
 
 The URL you pasted belongs to a different login attempt. Each attempt has its own `state`, and it's only known to the process that started it. Common causes: you pasted a URL from an earlier attempt, the server restarted between `crunch_auth_start` and `crunch_auth_complete`, or you started with `crunch-mcp login` and finished in the chat (or the other way round). Start again and use the newest URL.
 
+**`the login's state is missing …`**
+
+You pasted only the code, or a URL without `state=`. Copy the whole URL from the address bar instead: crunch-mcp only accepts a code together with the `state` of a login it started.
+
 **`crunch returned an error instead of a code: access_denied`**
 
 You clicked **Deny**, or Crunch refused the requested scopes. Try again, and check the scopes your API account is allowed.

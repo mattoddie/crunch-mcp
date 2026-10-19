@@ -184,7 +184,7 @@ Files can be up to 10 MB each, and an invoice can have up to five. Crunch needs 
 ## Lists, paging and raw objects
 
 - **Compact by default.** List tools return trimmed summaries with the useful fields: names, dates, amounts, status and outstanding balances. Get tools return the full record.
-- **Paging.** Expenses, invoices, recurring expenses and bank account payments are paged by Crunch. List tools fetch one page of 50 by default (`page`, `size` up to 200 and `sort` change that). `all: true` fetches every page, up to `max_items` (default 1000), and says when it stopped early.
+- **Paging.** Expenses, invoices, recurring expenses and bank account payments are paged by Crunch. List tools fetch one page of 50 by default (`page`, `size` up to 200 and `sort` change that). `all: true` fetches every page, up to `max_items` (default 1000, at most 10,000), and says when it stopped early.
 - **Filters** like `start_date`, `end_date`, `supplier_id`, `client_id`, `has_attachment` and `status` keep responses small. Totals tools (`crunch_get_expenses_total`, `crunch_get_invoice_totals`) answer *"how much"* without listing anything.
 - **`raw: true`** on many list and get tools returns Crunch's full objects when you need a field the summary leaves out.
 - **IDs, not numbers.** Tools take Crunch's internal invoice ID, not the invoice number printed on it. The assistant finds the ID with `crunch_list_invoices` first.

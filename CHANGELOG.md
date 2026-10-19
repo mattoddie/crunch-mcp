@@ -6,6 +6,31 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+This release contains security fixes from a review, and some **breaking changes** to configuration and tools; see below before upgrading.
+
+### Security
+
+- A token refresh is no longer cut short when the tool call that triggered it is cancelled. Before, a cancellation after Crunch had rotated the refresh token lost the new one, and the next refresh reused the spent token, which makes Crunch revoke the whole login.
+- POST requests (creating expenses, recording payments, issuing or emailing invoices) are no longer retried when Crunch returns `503`, which could do them twice. They are still retried on `429`.
+- Updates always send the id of the record in their path: an `id` in `changes` or `extra` is overridden (as is a recurring expense's `recurringEvent` id), and a raw `PUT` whose body names a different record is refused. Before, the model could point an update at a record the keep-payments checks never looked at.
+- **Breaking:** `CRUNCH_API_URL` and `CRUNCH_AUTH_URL` must use `https://` (plain `http://` only for loopback hosts), and no configured URL may contain `user:password@`. Redirects from the Crunch API or OAuth server are no longer followed, so tokens and the client secret can't be sent elsewhere.
+- **Breaking:** `MCP_ALLOW_UNAUTHENTICATED=true` now also requires `MCP_ALLOWED_HOSTS`, because without a token the Host check is the only protection against DNS rebinding.
+- **Breaking:** `MCP_AUTH_TOKEN` must be at least 16 characters.
+- **Breaking:** with `MCP_ALLOWED_HOSTS` set, an `Origin` entry without a port only matches the scheme's default port (443 or 80); list `host:port` to allow a page on another port, such as `localhost:5173`. An `Origin` header that is present but empty is now checked (and refused) like any other. `Host` entries without a port still match any port.
+- `/mcp` only accepts `POST` (`405` otherwise) with a JSON body. The HTTP server has read and idle timeouts.
+- **Breaking:** `crunch_auth_complete` needs the login's `state`: paste the whole redirected URL, or pass the code with the new `state` argument. A bare code was used with the most recent login, so a code from someone else's authorisation could complete it.
+- The raw API tool applies the email switch to query parameters (such as `sendReminders=true`, or anything named like `email` or `remind`) and to flags such as `sendEmail: true` in bodies, and a `POST` to a record path must keep its payments and attachments, like a `PUT`.
+- With `CRUNCH_FILES_DIR` set, the download tools are no longer annotated read-only, because `save_to` writes files.
+- **Breaking:** `crunch_remove_expense_payment` needs `payment_id`, or `all: true` to remove every payment. Leaving `payment_id` out used to remove all of them.
+- A refresh token that Crunch rejected isn't sent again on every call; after other refresh failures, refreshes wait 10 seconds.
+- API responses over 64 MiB fail instead of being read in full (or, for downloads, silently truncated), and `max_items` is capped at 10,000.
+- Error text from Crunch is stripped of control and formatting characters and quoted as coming from the API before it reaches the model.
+- Builds use Go 1.27 (`toolchain go1.27.2`), the Docker base images are pinned by digest, and CI runs `govulncheck`.
+
+### Changed
+
+- `crunch-mcp healthcheck` reads the same settings as `serve` (including `_FILE` variants) and connects to `MCP_HTTP_HOST`, or to loopback when the server listens on every interface.
+
 ## [0.2.0] - 2026-10-15
 
 This release contains security fixes and several **breaking changes** to defaults; see below before upgrading.
