@@ -220,7 +220,7 @@ func (c *Client) send(ctx context.Context, method, path string, q Query, body an
 			}
 			continue
 		}
-		if (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable) && attempt < maxRetries {
+		if retryable(method, resp.StatusCode) && attempt < maxRetries {
 			resp.Body.Close()
 			delay := time.Duration(250<<attempt) * time.Millisecond
 			if s, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && s > 0 {
@@ -240,6 +240,20 @@ func (c *Client) send(ctx context.Context, method, path string, q Query, body an
 			Message: fmt.Sprintf("%s %s failed (HTTP %d): %s.%s", method, path, resp.StatusCode, errorMessage(resp.StatusCode, data), hint(resp.StatusCode, method)),
 		}
 	}
+}
+
+// retryable reports whether a failed request may be sent again. A 429 means Crunch
+// refused it before doing anything, so any method may be retried. A 503 may come after
+// the request took effect, so a POST (creating an expense, recording a payment, issuing
+// or emailing an invoice) is never repeated on one: it could do the thing twice.
+func retryable(method string, status int) bool {
+	switch status {
+	case http.StatusTooManyRequests:
+		return true
+	case http.StatusServiceUnavailable:
+		return method != http.MethodPost
+	}
+	return false
 }
 
 // errorMessage pulls a readable message out of a Crunch (Spring) error body.

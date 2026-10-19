@@ -82,3 +82,30 @@ func TestBareValueResponse(t *testing.T) {
 		t.Errorf("got %v %v", out, err)
 	}
 }
+
+func TestPostsAreNotRetriedOn503(t *testing.T) {
+	m := crunchtest.New()
+	defer m.Server.Close()
+	posts, gets := 0, 0
+	m.On("POST", "/expenses", func(crunchtest.Request, []string) (int, any) {
+		posts++
+		return 503, map[string]string{"message": "busy"}
+	})
+	m.On("GET", "/expenses/1", func(crunchtest.Request, []string) (int, any) {
+		gets++
+		if gets < 2 {
+			return 503, map[string]string{"message": "busy"}
+		}
+		return 200, map[string]any{}
+	})
+	c := staticClient(t, m)
+	if err := c.Post(context.Background(), "/expenses", nil, map[string]any{}, nil); err == nil || !strings.Contains(err.Error(), "HTTP 503") {
+		t.Errorf("POST: %v", err)
+	}
+	if posts != 1 {
+		t.Errorf("POST sent %d times, want 1 (it may already have created the expense)", posts)
+	}
+	if err := c.Get(context.Background(), "/expenses/1", nil, nil); err != nil || gets != 2 {
+		t.Errorf("GET retried: %v, %d calls", err, gets)
+	}
+}
