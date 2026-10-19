@@ -124,3 +124,22 @@ func TestToolErrorsAreToolResults(t *testing.T) {
 		t.Error("invalid arguments were accepted")
 	}
 }
+
+// With CRUNCH_FILES_DIR set, save_to writes files, so the download tools aren't read-only.
+func TestDownloadToolsAreReadOnlyOnlyWithoutFilesDir(t *testing.T) {
+	ro := config.AllTools()
+	ro.AllowWrites, ro.AllowDeletes, ro.AllowEmail = false, false, false
+	env := newEnv(t, ro)
+	withFiles := ro
+	withFiles.FilesDir = filesDir(t)
+	without, with := toolNames(t, env.session), toolNames(t, connect(t, env.client, withFiles))
+	for _, name := range []string{"crunch_download_invoice_pdf", "crunch_download_invoice_attachment", "crunch_download_expense_attachment"} {
+		if !without[name].Annotations.ReadOnlyHint {
+			t.Errorf("%s: should be read-only without CRUNCH_FILES_DIR", name)
+		}
+		a := with[name].Annotations
+		if a.ReadOnlyHint || a.DestructiveHint == nil || *a.DestructiveHint {
+			t.Errorf("%s with CRUNCH_FILES_DIR: readOnly=%v destructive=%v, want false/false", name, a.ReadOnlyHint, a.DestructiveHint)
+		}
+	}
+}

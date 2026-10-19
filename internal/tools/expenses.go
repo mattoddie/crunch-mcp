@@ -485,6 +485,7 @@ func registerExpenses(c *Context) {
 	add(c, Def{
 		Toolset: "expenses", Name: "crunch_download_expense_attachment", Title: "Download expense attachment",
 		Description: "Download a receipt or other file attached to an expense. Images are returned so you can read them; other files (PDFs) come back as an embedded resource. Attachment IDs and names come from crunch_get_expense.",
+		ReadOnly:    c.downloadReadOnly(),
 	}, func(ctx context.Context, a downloadExpenseAttachmentArgs) (any, error) {
 		name := a.FileName
 		if name == "" {

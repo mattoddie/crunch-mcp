@@ -380,3 +380,10 @@ func pinNestedID(body, current Obj, key string) {
 	nested["id"] = cur["id"]
 	body[key] = nested
 }
+
+// downloadReadOnly is the readOnlyHint of the download tools. With CRUNCH_FILES_DIR set,
+// their save_to writes files on the server, so they aren't read-only (though never
+// destructive: existing files are not overwritten).
+func (c *Context) downloadReadOnly() *bool {
+	return boolPtr(c.FilesDir == "")
+}
