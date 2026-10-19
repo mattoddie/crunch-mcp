@@ -127,7 +127,7 @@ Access tokens last about an hour. Remove `CRUNCH_ACCESS_TOKEN` and log in proper
 
 ## Permission errors (`403`)
 
-**`… failed (HTTP 403): … Crunch refused this request. The login may not include the create:all scope (…), or the endpoint isn't part of the public API.`**
+**`… failed (HTTP 403). Crunch's error message (quoted from the API): "…". Crunch refused this request. The login may not include the create:all scope (…), or the endpoint isn't part of the public API.`**
 
 Crunch understood the request but won't allow it. Two causes:
 
@@ -136,7 +136,7 @@ Crunch understood the request but won't allow it. Two causes:
 
 ## Errors when creating or changing records
 
-**`… failed (HTTP 500): … Crunch often returns 500 when a required field is missing or a value (VAT type, expense type, payment method) isn't valid; check them with the reference tools.`**
+**`… failed (HTTP 500). Crunch's error message (quoted from the API): "…". Crunch often returns 500 when a required field is missing or a value (VAT type, expense type, payment method) isn't valid; check them with the reference tools.`**
 
 Despite the status code, this is almost always a problem with the request rather than an outage. Check:
 
@@ -146,7 +146,7 @@ Despite the status code, this is almost always a problem with the request rather
 - The **supplier** or **client** exists (`crunch_list_suppliers`, `crunch_list_clients`).
 - A client's **billing address** has `line1`, `line2` and `country`.
 
-**`… failed (HTTP 400): …`** with field names
+**`… failed (HTTP 400). Crunch's error message (quoted from the API): "…"`** with field names
 
 Crunch rejected specific fields. The message lists each one and why.
 

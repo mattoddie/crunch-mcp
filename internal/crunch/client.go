@@ -259,7 +259,7 @@ func (c *Client) send(ctx context.Context, method, path string, q Query, body an
 		resp.Body.Close()
 		return nil, &Error{
 			Status:  resp.StatusCode,
-			Message: fmt.Sprintf("%s %s failed (HTTP %d): %s.%s", method, path, resp.StatusCode, errorMessage(resp.StatusCode, data), hint(resp.StatusCode, method)),
+			Message: fmt.Sprintf("%s %s failed (HTTP %d). Crunch's error message (quoted from the API): \"%s\".%s", method, path, resp.StatusCode, upstreamText(errorMessage(resp.StatusCode, data)), hint(resp.StatusCode, method)),
 		}
 	}
 }

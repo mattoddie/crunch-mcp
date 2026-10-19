@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/mattoddie/crunch-mcp/internal/config"
 )
@@ -558,6 +560,7 @@ func (a *Auth) tokenRequest(ctx context.Context, form url.Values) (*tokenRespons
 		if reason == "" {
 			reason = resp.Status
 		}
+		reason = upstreamText(truncate(reason, 500))
 		hint := ""
 		switch {
 		case form.Get("grant_type") == "refresh_token" && regexp.MustCompile(`(?i)invalid_grant|invalid_token|expired|revoked`).MatchString(reason):
@@ -576,9 +579,30 @@ func (a *Auth) tokenRequest(ctx context.Context, form url.Values) (*tokenRespons
 	return &res, nil
 }
 
+// truncate shortens s to at most n bytes without splitting a UTF-8 character.
 func truncate(s string, n int) string {
-	if len(s) > n {
-		return s[:n]
+	if len(s) <= n {
+		return s
 	}
-	return s
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
+}
+
+// upstreamText makes text from a Crunch error response safe to show the model inside
+// quotes: control and invisible formatting characters (newlines, bidi overrides) become
+// spaces, and double quotes become single ones, so it can't break out of its quoting or
+// pass for crunch-mcp's own text.
+func upstreamText(s string) string {
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r == '"':
+			return '\''
+		case unicode.IsControl(r), unicode.Is(unicode.Cf, r), r == utf8.RuneError:
+			return ' '
+		}
+		return r
+	}, s)
+	return strings.Join(strings.Fields(s), " ")
 }
