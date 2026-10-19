@@ -32,6 +32,8 @@ jobs:
           CGO_ENABLED: "1"
       - name: Check docs/tools.md is up to date
         run: make docs-check
+      - name: Check for known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
   docker:
     name: Docker image
@@ -67,6 +69,8 @@ jobs:
           test "$tools" -gt 0
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/mcp -d '{}')
           test "$code" = 401
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" http://localhost:8080/mcp)
+          test "$code" = 405
           sleep 6
           test "$(docker inspect --format '{{.State.Health.Status}}' smoke)" = healthy
           docker logs smoke
