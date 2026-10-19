@@ -24,7 +24,8 @@ Run `docker compose logs crunch-mcp`. The last line names the problem, for examp
 | `MCP_TRANSPORT must be stdio or http, got "…"` | Fix the value. |
 | `MCP_AUTH_TOKEN is required for the http transport …` | Set `MCP_AUTH_TOKEN` to a long random value (`openssl rand -hex 32`) and give it to your MCP clients. Only if something in front of the server already authenticates every request, set `MCP_ALLOW_UNAUTHENTICATED=true` instead. |
 | `CRUNCH_FILES_DIR (…) must be an existing directory` | Create the directory (in Docker, mount it), or unset the variable. |
-| `CRUNCH_API_URL must use https:// (or http://), got …` | Include the scheme, or remove the variable to use the default. The same applies to `CRUNCH_AUTH_URL` and `CRUNCH_REDIRECT_URI`. |
+| `CRUNCH_API_URL must use https:// (http:// is only allowed for localhost), got …` | The Crunch API and OAuth server must be reached over `https://`. Include the scheme, or remove the variable to use the default. The same applies to `CRUNCH_AUTH_URL`; `CRUNCH_REDIRECT_URI` may also use `http://`. |
+| `… must not contain a user name or password` | Remove the `user:password@` part from the URL. |
 | `MCP_HTTP_PORT must be a positive integer, got "…"` | Fix the value. The same applies to `CRUNCH_TIMEOUT_MS`. |
 | `could not read CRUNCH_CLIENT_SECRET_FILE (…)` | The secret file isn't mounted where the variable points. |
 | `the token file /data/tokens.json is not valid JSON; delete it and log in again` | The file was damaged or edited by hand. Delete it and [log in](getting-started.md#3-log-in-to-crunch) again. |

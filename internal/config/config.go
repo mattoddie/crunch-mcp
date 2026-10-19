@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -112,15 +113,35 @@ func positiveInt(name, v string, fallback int) (int, error) {
 	return n, nil
 }
 
-func checkURL(name, v string) (string, error) {
+// checkURL validates a configured URL. Credentials in it are refused (they would be sent
+// with every request and show up in logs). With cloud set, plain http:// is only accepted
+// for loopback hosts, such as a local mock: the Crunch API and OAuth server carry bearer
+// tokens and the client secret, which must not cross a network in cleartext.
+func checkURL(name, v string, cloud bool) (string, error) {
 	u, err := url.Parse(v)
 	if err != nil || u.Host == "" {
 		return "", fmt.Errorf("%s is not a valid URL: %s", name, v)
 	}
-	if u.Scheme != "https" && u.Scheme != "http" {
+	if u.User != nil {
+		return "", fmt.Errorf("%s must not contain a user name or password", name)
+	}
+	switch {
+	case u.Scheme == "https":
+	case u.Scheme == "http" && (!cloud || isLoopback(u.Hostname())):
+	case cloud:
+		return "", fmt.Errorf("%s must use https:// (http:// is only allowed for localhost), got %s", name, v)
+	default:
 		return "", fmt.Errorf("%s must use https:// (or http://), got %s", name, v)
 	}
 	return strings.TrimRight(v, "/"), nil
+}
+
+func isLoopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // DefaultScopes are the least-privilege scopes for the enabled tools, plus offline_access for a refresh token.
@@ -202,13 +223,13 @@ func Load(env Env) (*Config, error) {
 	}
 
 	c := &cfg.Crunch
-	if c.APIURL, err = checkURL("CRUNCH_API_URL", or(get("CRUNCH_API_URL"), "https://public-api.crunch.co.uk/v1")); err != nil {
+	if c.APIURL, err = checkURL("CRUNCH_API_URL", or(get("CRUNCH_API_URL"), "https://public-api.crunch.co.uk/v1"), true); err != nil {
 		return nil, err
 	}
-	if c.AuthURL, err = checkURL("CRUNCH_AUTH_URL", or(get("CRUNCH_AUTH_URL"), "https://oauth.crunch.co.uk")); err != nil {
+	if c.AuthURL, err = checkURL("CRUNCH_AUTH_URL", or(get("CRUNCH_AUTH_URL"), "https://oauth.crunch.co.uk"), true); err != nil {
 		return nil, err
 	}
-	if c.RedirectURI, err = checkURL("CRUNCH_REDIRECT_URI", or(get("CRUNCH_REDIRECT_URI"), "http://127.0.0.1:8976/callback")); err != nil {
+	if c.RedirectURI, err = checkURL("CRUNCH_REDIRECT_URI", or(get("CRUNCH_REDIRECT_URI"), "http://127.0.0.1:8976/callback"), false); err != nil {
 		return nil, err
 	}
 	c.ClientID = get("CRUNCH_CLIENT_ID")

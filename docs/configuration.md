@@ -25,8 +25,8 @@ The server checks the configuration at startup. If something is wrong, it exits 
 | `CRUNCH_REFRESH_TOKEN` | | A refresh token to start from, instead of logging in. It's saved to the token file and replaced as it rotates. See [Starting from a refresh token](#starting-from-a-refresh-token). |
 | `CRUNCH_ACCESS_TOKEN` | | A fixed access token, used until Crunch rejects it. Handy for a quick test. It lasts about an hour, and after that the server needs a refresh token or a login. |
 | `CRUNCH_LOGIN_LISTEN` | the redirect URI's host and port, such as `127.0.0.1:8976` (`0.0.0.0:8976` in the image) | The address `crunch-mcp login` listens on to catch the redirect. The image sets `0.0.0.0:8976` so a published port reaches the container: publish it on loopback only, with `-p 127.0.0.1:8976:8976`. The listener only accepts the redirect for the login it started (the `state` must match), and stops when the login finishes. |
-| `CRUNCH_API_URL` | `https://public-api.crunch.co.uk/v1` | The Crunch public API. You shouldn't need to change it. |
-| `CRUNCH_AUTH_URL` | `https://oauth.crunch.co.uk` | The Crunch OAuth server (with `/authorize` and `/token`). You shouldn't need to change it. |
+| `CRUNCH_API_URL` | `https://public-api.crunch.co.uk/v1` | The Crunch public API. You shouldn't need to change it. Must be `https://` (plain `http://` only for a loopback host, such as a local mock), without a user name or password in it. |
+| `CRUNCH_AUTH_URL` | `https://oauth.crunch.co.uk` | The Crunch OAuth server (with `/authorize` and `/token`). You shouldn't need to change it. The same `https://` rule applies: the client secret and refresh tokens are sent here. |
 | `CRUNCH_TIMEOUT_MS` | `30000` | Timeout for each request to Crunch, in milliseconds. |
 
 ## How login works

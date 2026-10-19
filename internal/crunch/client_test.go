@@ -3,6 +3,8 @@ package crunch_test
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -107,5 +109,25 @@ func TestPostsAreNotRetriedOn503(t *testing.T) {
 	}
 	if err := c.Get(context.Background(), "/expenses/1", nil, nil); err != nil || gets != 2 {
 		t.Errorf("GET retried: %v, %d calls", err, gets)
+	}
+}
+
+func TestRedirectsAreNotFollowed(t *testing.T) {
+	followed := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/elsewhere" {
+			followed = true
+			return
+		}
+		http.Redirect(w, r, "/elsewhere", http.StatusFound)
+	}))
+	defer srv.Close()
+	c, err := crunch.New(config.Crunch{APIURL: srv.URL + "/v1", AuthURL: srv.URL, AccessToken: "x", TokenFile: t.TempDir() + "/t.json", Timeout: 5e9})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = c.Get(context.Background(), "/user-details", nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "HTTP 302") || followed {
+		t.Errorf("redirect: %v (followed %v)", err, followed)
 	}
 }

@@ -99,7 +99,13 @@ type Client struct {
 
 // New creates a client and loads any saved tokens.
 func New(cfg config.Crunch) (*Client, error) {
-	hc := &http.Client{Timeout: cfg.Timeout}
+	hc := &http.Client{
+		Timeout: cfg.Timeout,
+		// Redirects aren't followed: one could send the bearer token, or the client secret
+		// on /token, somewhere other than the configured https URL (even downgrading to
+		// http on the same host). A 3xx is reported as an error instead.
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
 	auth, err := NewAuth(cfg, hc)
 	if err != nil {
 		return nil, err

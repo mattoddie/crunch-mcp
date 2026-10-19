@@ -50,15 +50,19 @@ func TestScopesFollowWriteSettings(t *testing.T) {
 
 func TestValidation(t *testing.T) {
 	for env, want := range map[string]string{
-		"CRUNCH_ALLOW_DELETES=true":           "requires CRUNCH_ALLOW_WRITES",
-		"CRUNCH_ALLOW_EMAIL=true":             "requires CRUNCH_ALLOW_WRITES",
-		"CRUNCH_ALLOW_WRITES=maybe":           "must be true or false",
-		"MCP_TRANSPORT=sse":                   "stdio or http",
-		"CRUNCH_TOOLSETS=expenses,nope":       `unknown toolset "nope"`,
-		"CRUNCH_API_URL=ftp://x":              "https://",
-		"CRUNCH_TIMEOUT_MS=-1":                "positive integer",
-		"MCP_HTTP_PORT=http":                  "positive integer",
-		"CRUNCH_CLIENT_SECRET_FILE=/nonexist": "CRUNCH_CLIENT_SECRET_FILE",
+		"CRUNCH_ALLOW_DELETES=true":                      "requires CRUNCH_ALLOW_WRITES",
+		"CRUNCH_ALLOW_EMAIL=true":                        "requires CRUNCH_ALLOW_WRITES",
+		"CRUNCH_ALLOW_WRITES=maybe":                      "must be true or false",
+		"MCP_TRANSPORT=sse":                              "stdio or http",
+		"CRUNCH_TOOLSETS=expenses,nope":                  `unknown toolset "nope"`,
+		"CRUNCH_API_URL=ftp://x":                         "https://",
+		"CRUNCH_API_URL=http://api.example.com":          "only allowed for localhost",
+		"CRUNCH_AUTH_URL=http://10.0.0.1/oauth":          "only allowed for localhost",
+		"CRUNCH_AUTH_URL=https://u:p@oauth.example.com":  "user name or password",
+		"CRUNCH_REDIRECT_URI=http://u@127.0.0.1:8976/cb": "user name or password",
+		"CRUNCH_TIMEOUT_MS=-1":                           "positive integer",
+		"MCP_HTTP_PORT=http":                             "positive integer",
+		"CRUNCH_CLIENT_SECRET_FILE=/nonexist":            "CRUNCH_CLIENT_SECRET_FILE",
 	} {
 		k, v, _ := strings.Cut(env, "=")
 		_, err := Load(MapEnv(map[string]string{k: v}))
@@ -149,5 +153,12 @@ func TestFilesDir(t *testing.T) {
 	}
 	if !Within("/run/secrets/x", SecretsDir) || !Within("/run/secrets", SecretsDir) || Within("/run/secretsx", SecretsDir) || !Within("/a", "/") {
 		t.Error("Within")
+	}
+}
+
+func TestLoopbackHTTPAllowed(t *testing.T) {
+	cfg, err := Load(MapEnv(map[string]string{"CRUNCH_API_URL": "http://127.0.0.1:9000/v1", "CRUNCH_AUTH_URL": "http://localhost:9000/oauth", "CRUNCH_REDIRECT_URI": "http://mcp.example.com/cb"}))
+	if err != nil || cfg.Crunch.APIURL != "http://127.0.0.1:9000/v1" {
+		t.Errorf("loopback http: %v", err)
 	}
 }
