@@ -43,6 +43,22 @@ type tokenResponse struct {
 	Scope        string `json:"scope"`
 }
 
+// failedRefresh remembers a refresh that failed, so it isn't retried on every call.
+type failedRefresh struct {
+	refreshToken string
+	rejected     bool // Crunch refused the refresh token (HTTP 4xx other than 429), so it will never work
+	at           time.Time
+	err          error
+}
+
+// tokenError is an error response from the token endpoint.
+type tokenError struct {
+	status int
+	msg    string
+}
+
+func (e *tokenError) Error() string { return e.msg }
+
 type pendingLogin struct {
 	verifier string
 	created  time.Time
@@ -51,6 +67,9 @@ type pendingLogin struct {
 const (
 	expiryMargin    = time.Minute // refresh a little before the access token expires
 	pendingLoginTTL = 15 * time.Minute
+	// refreshRetryAfter is how long to wait after a refresh fails for a reason other than
+	// Crunch rejecting the refresh token, such as a network error.
+	refreshRetryAfter = 10 * time.Second
 )
 
 // ErrNotLoggedIn is returned when there are no credentials at all.
@@ -122,8 +141,9 @@ type Auth struct {
 	pending        map[string]pendingLogin
 	lastError      string
 	persistWarning string
-	staticRejected bool      // CRUNCH_ACCESS_TOKEN is used until the API rejects it
-	fileMod        time.Time // modification time of the token file when last read or written
+	staticRejected bool           // CRUNCH_ACCESS_TOKEN is used until the API rejects it
+	failed         *failedRefresh // the last refresh that failed, until one succeeds
+	fileMod        time.Time      // modification time of the token file when last read or written
 
 	refreshMu sync.Mutex // serialises refreshes within this process; lockTokens does so across processes
 	lockWarn  sync.Once
@@ -302,6 +322,15 @@ func (a *Auth) Refresh(ctx context.Context, rejected string) (string, error) {
 	if a.cfg.ClientID == "" {
 		return "", errors.New("CRUNCH_CLIENT_ID is required to refresh the access token")
 	}
+	// Don't send a refresh token Crunch has just refused again on every tool call: one it
+	// rejected won't start working (a new login replaces it), and after other failures,
+	// such as Crunch being unreachable, wait a little before trying again.
+	a.mu.Lock()
+	if f := a.failed; f != nil && f.refreshToken == refreshToken && (f.rejected || time.Since(f.at) < refreshRetryAfter) {
+		a.mu.Unlock()
+		return "", f.err
+	}
+	a.mu.Unlock()
 	// Once the request is sent, Crunch may rotate the refresh token, and the old one then
 	// can't be used again (reusing it revokes the whole grant). So the exchange, and saving
 	// whatever comes back, must not be cut short when the tool call that triggered the
@@ -310,8 +339,10 @@ func (a *Auth) Refresh(ctx context.Context, rejected string) (string, error) {
 	defer cancel()
 	res, err := a.tokenRequest(rctx, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}})
 	if err != nil {
+		var te *tokenError
 		a.mu.Lock()
 		a.lastError = err.Error()
+		a.failed = &failedRefresh{refreshToken: refreshToken, rejected: errors.As(err, &te) && te.status/100 == 4 && te.status != http.StatusTooManyRequests, at: time.Now(), err: err}
 		a.mu.Unlock()
 		return "", err
 	}
@@ -485,6 +516,7 @@ func (a *Auth) accept(res *tokenResponse, seed string) string {
 	defer a.mu.Unlock()
 	a.tokens = t
 	a.lastError = ""
+	a.failed = nil
 	if err := a.Store.Save(t); err != nil {
 		// Carry on with the in-memory tokens, but a restart would need a new login.
 		a.persistWarning = fmt.Sprintf("could not save tokens to %s: %v. They will be lost on restart; mount a writable volume there", a.cfg.TokenFile, err)
@@ -543,7 +575,7 @@ func (a *Auth) tokenRequest(ctx context.Context, form url.Values) (*tokenRespons
 		case strings.Contains(strings.ToLower(reason), "redirect"):
 			hint = fmt.Sprintf(" Check that CRUNCH_REDIRECT_URI (%s) matches any redirect URI set on your Crunch API account.", a.cfg.RedirectURI)
 		}
-		return nil, fmt.Errorf("crunch token request failed (HTTP %d): %s.%s", resp.StatusCode, reason, hint)
+		return nil, &tokenError{status: resp.StatusCode, msg: fmt.Sprintf("crunch token request failed (HTTP %d): %s.%s", resp.StatusCode, reason, hint)}
 	}
 	var res tokenResponse
 	if err := json.Unmarshal(body, &res); err != nil || res.AccessToken == "" {

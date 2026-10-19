@@ -121,6 +121,13 @@ func TestInvalidRefreshTokenExplains(t *testing.T) {
 	if st := c.Auth.Status(); st["authenticated"] != false || st["error"] == nil {
 		t.Errorf("status: %v", st)
 	}
+	// A refresh token Crunch refused isn't sent again on every call.
+	if err := c.Get(context.Background(), "/user-details", nil, nil); err == nil || !strings.Contains(err.Error(), "invalid_grant") {
+		t.Errorf("second call: %v", err)
+	}
+	if m.TokenRequests != 1 {
+		t.Errorf("token requests: %d, want 1", m.TokenRequests)
+	}
 }
 
 func TestNotLoggedIn(t *testing.T) {
