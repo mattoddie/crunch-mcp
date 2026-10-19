@@ -278,7 +278,7 @@ func registerExpenses(c *Context) {
 	}
 	putExpense := func(ctx context.Context, id int64, body Obj) (Obj, error) {
 		var e Obj
-		return e, cl.Put(ctx, path("/expenses/%d", id), nil, body, &e)
+		return e, cl.Put(ctx, path("/expenses/%d", id), nil, pinID(body, id), &e)
 	}
 
 	add(c, Def{

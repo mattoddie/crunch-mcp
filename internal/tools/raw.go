@@ -7,6 +7,7 @@ import (
 	"net/http"
 	pathpkg "path"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/mattoddie/crunch-mcp/internal/crunch"
@@ -97,6 +98,11 @@ func registerRaw(c *Context) {
 		if !c.AllowEmail && emailPathRe.MatchString(canon) {
 			return nil, errors.New("emailing invoices is disabled. Set CRUNCH_ALLOW_EMAIL=true to allow it")
 		}
+		if method == http.MethodPut {
+			if err := checkRawBodyID(canon, a.Body); err != nil {
+				return nil, err
+			}
+		}
 		if method == http.MethodPost || method == http.MethodPut {
 			if err := c.checkRawBody(ctx, method, p, canon, a.Body); err != nil {
 				return nil, err
@@ -158,4 +164,29 @@ func (c *Context) checkRawBody(ctx context.Context, method, p, canon string, bod
 		return err
 	}
 	return c.checkKeepsEntries(current, obj)
+}
+
+var trailingIDRe = regexp.MustCompile(`/(\d+)$`)
+
+// checkRawBodyID refuses a raw PUT whose body names a different record from its path: the
+// access checks fetch and compare the record at the path, so Crunch must update that one.
+func checkRawBodyID(canon string, body any) error {
+	m := trailingIDRe.FindStringSubmatch(canon)
+	obj, ok := body.(map[string]any)
+	if m == nil || !ok {
+		return nil
+	}
+	for k, v := range obj {
+		if !strings.EqualFold(k, "id") || v == nil {
+			continue
+		}
+		s := fmt.Sprint(v)
+		if f, ok := v.(float64); ok {
+			s = strconv.FormatFloat(f, 'f', -1, 64)
+		}
+		if s != m[1] {
+			return fmt.Errorf("the body's %s (%v) doesn't match the record in the path (%s); a PUT may only update the record it names", k, v, m[1])
+		}
+	}
+	return nil
 }

@@ -345,3 +345,38 @@ func fileResult(c *Context, f *crunch.File, fallbackName, uri, saveTo string) (R
 	text.Content = append(text.Content, content...)
 	return Result{text}, nil
 }
+
+// pinID makes an update body name the record at the path being updated. The body
+// starts from the record fetched at that path, but `changes` and `extra` come from
+// the model and could set another id, so Crunch might update a different record
+// from the one the access checks looked at.
+func pinID(body Obj, id int64) Obj {
+	for k := range body {
+		if strings.EqualFold(k, "id") {
+			delete(body, k)
+		}
+	}
+	body["id"] = id
+	return body
+}
+
+// pinNestedID keeps the id of an object owned by the record (such as a recurring
+// expense's recurringEvent) as it is in current, the record fetched from the API.
+func pinNestedID(body, current Obj, key string) {
+	cur, _ := current[key].(Obj)
+	if cur == nil || cur["id"] == nil {
+		return
+	}
+	nested, ok := body[key].(Obj)
+	if !ok {
+		return
+	}
+	nested = deepMerge(nested, nil)
+	for k := range nested {
+		if strings.EqualFold(k, "id") {
+			delete(nested, k)
+		}
+	}
+	nested["id"] = cur["id"]
+	body[key] = nested
+}

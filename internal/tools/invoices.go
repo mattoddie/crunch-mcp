@@ -191,7 +191,7 @@ func registerInvoices(c *Context) {
 	}
 	putInvoice := func(ctx context.Context, id int64, body Obj) (Obj, error) {
 		var i Obj
-		return i, cl.Put(ctx, path("/invoices/%d", id), nil, body, &i)
+		return i, cl.Put(ctx, path("/invoices/%d", id), nil, pinID(body, id), &i)
 	}
 
 	add(c, Def{

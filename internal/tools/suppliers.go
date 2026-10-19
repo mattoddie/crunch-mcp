@@ -122,7 +122,7 @@ func registerSuppliers(c *Context) {
 			return nil, err
 		}
 		var out any
-		return out, cl.Put(ctx, p, nil, deepMerge(current, set(a.body(a.CompanyName), "archived", a.Archived)), &out)
+		return out, cl.Put(ctx, p, nil, pinID(deepMerge(current, set(a.body(a.CompanyName), "archived", a.Archived)), a.SupplierID), &out)
 	})
 
 	add(c, Def{

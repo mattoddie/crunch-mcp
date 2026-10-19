@@ -195,7 +195,7 @@ func registerBanking(c *Context) {
 			return nil, err
 		}
 		var out any
-		return out, cl.Put(ctx, p, nil, deepMerge(current, a.body()), &out)
+		return out, cl.Put(ctx, p, nil, pinID(deepMerge(current, a.body()), a.BankAccountID), &out)
 	})
 
 	add(c, Def{
@@ -295,7 +295,7 @@ func registerBanking(c *Context) {
 			return nil, err
 		}
 		var out any
-		return out, cl.Put(ctx, p, nil, deepMerge(current, a.body()), &out)
+		return out, cl.Put(ctx, p, nil, pinID(deepMerge(current, a.body()), a.CreditCardID), &out)
 	})
 
 	add(c, Def{
