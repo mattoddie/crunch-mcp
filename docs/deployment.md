@@ -66,7 +66,7 @@ The image's entrypoint is the `crunch-mcp` binary, so you can run any of its com
 | `serve` (the default) | Serves MCP over stdio, or Streamable HTTP when `MCP_TRANSPORT=http` |
 | `login` | Logs in to Crunch in a browser and saves the tokens to `CRUNCH_TOKEN_FILE`. In Docker, add `-p 127.0.0.1:8976:8976` |
 | `status` | Prints the login status as JSON: where the tokens come from, the scopes, when the access token expires and whether there's a refresh token. Never prints the tokens. |
-| `healthcheck` | Exits with `0` if the HTTP server answers `/health`. Used by the image's `HEALTHCHECK`. |
+| `healthcheck` | Exits with `0` if the HTTP server answers `/health`. It reads the same settings as `serve` and connects to `MCP_HTTP_HOST` and `MCP_HTTP_PORT` (to loopback when the host is empty, `0.0.0.0` or `::`). Used by the image's `HEALTHCHECK`. |
 | `version` | Prints the version |
 
 ## Image tags

@@ -107,15 +107,24 @@ func TestHTTPNeedsAuthToken(t *testing.T) {
 		t.Fatalf("http without a token: got %v", err)
 	}
 	base["MCP_ALLOW_UNAUTHENTICATED"] = "true"
-	if _, err := Load(MapEnv(base)); err != nil {
+	if _, err := Load(MapEnv(base)); err == nil || !strings.Contains(err.Error(), "also requires MCP_ALLOWED_HOSTS") {
+		t.Fatalf("unauthenticated without an allow-list: got %v", err)
+	}
+	base["MCP_ALLOWED_HOSTS"] = "mcp.example.com"
+	if cfg, err := Load(MapEnv(base)); err != nil || !cfg.HTTP.AllowUnauthenticated {
 		t.Fatalf("explicit opt-out: %v", err)
 	}
+	delete(base, "MCP_ALLOWED_HOSTS")
 	base["MCP_ALLOW_UNAUTHENTICATED"] = "maybe"
 	if _, err := Load(MapEnv(base)); err == nil || !strings.Contains(err.Error(), "must be true or false") {
 		t.Fatalf("bad opt-out value: %v", err)
 	}
 	delete(base, "MCP_ALLOW_UNAUTHENTICATED")
-	base["MCP_AUTH_TOKEN"] = "secret-token"
+	base["MCP_AUTH_TOKEN"] = "too-short"
+	if _, err := Load(MapEnv(base)); err == nil || !strings.Contains(err.Error(), "at least 16 characters") {
+		t.Fatalf("short token: got %v", err)
+	}
+	base["MCP_AUTH_TOKEN"] = strings.Repeat("t", 16)
 	if _, err := Load(MapEnv(base)); err != nil {
 		t.Fatalf("with a token: %v", err)
 	}

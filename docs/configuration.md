@@ -136,15 +136,15 @@ Tools that aren't allowed are **not registered at all**. The assistant can't see
 | `MCP_TRANSPORT` | `http` in the Docker image (`stdio` for the binary) | `http` for Streamable HTTP, or `stdio`. |
 | `MCP_HTTP_HOST` | `127.0.0.1` (`0.0.0.0` in the Docker image) | Address to listen on (HTTP only). The binary listens on loopback only unless you set this; the image listens on all interfaces so a published port reaches it. |
 | `MCP_HTTP_PORT` | `8080` | Port to listen on (HTTP only). |
-| `MCP_AUTH_TOKEN` | (required for http) | Every request to `/mcp` must send `Authorization: Bearer <token>`. The server refuses to start in http mode without it. Generate one with `openssl rand -hex 32`. |
-| `MCP_ALLOW_UNAUTHENTICATED` | `false` | Start the http transport without `MCP_AUTH_TOKEN`. Only for a server that sits behind something else that authenticates every request. |
-| `MCP_ALLOWED_HOSTS` | | Comma-separated allow-list of `Host` header values, such as `crunch-mcp.lan,crunch-mcp.lan:8080`. Requests with any other `Host` are rejected, which protects against DNS-rebinding attacks from web pages in your browser. Browser requests whose `Origin` header names a host that isn't on the list are rejected too, so other websites can't call the tools. Requests without an `Origin` (MCP clients that aren't browsers) are unaffected. |
+| `MCP_AUTH_TOKEN` | (required for http) | Every request to `/mcp` must send `Authorization: Bearer <token>`. The server refuses to start in http mode without it, or if it is shorter than 16 characters. Generate one with `openssl rand -hex 32`. |
+| `MCP_ALLOW_UNAUTHENTICATED` | `false` | Start the http transport without `MCP_AUTH_TOKEN`. Only for a server that sits behind something else that authenticates every request. It also requires `MCP_ALLOWED_HOSTS`, because without a token the Host check is all that stops DNS rebinding; the server logs a warning at startup. |
+| `MCP_ALLOWED_HOSTS` | | Comma-separated allow-list of `host` or `host:port` entries, such as `crunch-mcp.lan`. Requests with any other `Host` header are rejected, which protects against DNS-rebinding attacks from web pages in your browser. For the `Host` header, an entry without a port matches any port. Browser requests with an `Origin` header (including an empty one, or `null`) that isn't on the list are rejected too, so other websites can't call the tools. For `Origin`, an entry without a port matches only the scheme's default port (443 or 80); to allow a page on another port, list it as `host:port`, such as `localhost:5173`. Requests without an `Origin` (MCP clients that aren't browsers) are unaffected. |
 
 The HTTP server exposes these endpoints:
 
 | Path | Method | Purpose |
 |---|---|---|
-| `/mcp` | `POST` | The MCP endpoint (stateless Streamable HTTP, JSON responses). Request bodies are limited to 16 MiB, enough for attachments sent as base64. |
+| `/mcp` | `POST` | The MCP endpoint (stateless Streamable HTTP, JSON responses). Other methods get `405`. The body must be JSON, and is limited to 16 MiB, enough for attachments sent as base64. |
 | `/health`, `/healthz` | `GET` | Liveness check. Returns `{"status":"ok"}` and doesn't contact Crunch. |
 
 ## Docker secrets (`_FILE` variables)

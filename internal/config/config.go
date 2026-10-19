@@ -52,11 +52,16 @@ func AllTools() Tools {
 	return t
 }
 
+// MinAuthTokenLength is the shortest MCP_AUTH_TOKEN accepted.
+const MinAuthTokenLength = 16
+
 // HTTP holds the Streamable HTTP transport settings.
 type HTTP struct {
-	Host         string
-	Port         int
-	AuthToken    string
+	Host                 string
+	Port                 int
+	AuthToken            string
+	AllowUnauthenticated bool
+	// AllowedHosts are host or host:port entries checked against the Host and Origin headers.
 	AllowedHosts []string
 }
 
@@ -260,8 +265,19 @@ func Load(env Env) (*Config, error) {
 		return nil, err
 	}
 	// An HTTP server without a token would hand every enabled tool to anyone who can reach the port.
-	if cfg.Transport == "http" && h.AuthToken == "" && !unauth {
-		return nil, errors.New("MCP_AUTH_TOKEN is required for the http transport (generate one with: openssl rand -hex 32); set MCP_ALLOW_UNAUTHENTICATED=true only behind something else that authenticates")
+	h.AllowUnauthenticated = unauth
+	if cfg.Transport == "http" {
+		switch {
+		case h.AuthToken == "" && !unauth:
+			return nil, errors.New("MCP_AUTH_TOKEN is required for the http transport (generate one with: openssl rand -hex 32); set MCP_ALLOW_UNAUTHENTICATED=true only behind something else that authenticates")
+		case h.AuthToken != "" && len(h.AuthToken) < MinAuthTokenLength:
+			return nil, fmt.Errorf("MCP_AUTH_TOKEN must be at least %d characters (generate one with: openssl rand -hex 32)", MinAuthTokenLength)
+		case h.AuthToken == "" && len(h.AllowedHosts) == 0:
+			// Without a token, nothing stops a web page the user visits from reaching the
+			// server through DNS rebinding (its own hostname resolving to this address),
+			// except checking the Host header against a list.
+			return nil, errors.New("MCP_ALLOW_UNAUTHENTICATED=true also requires MCP_ALLOWED_HOSTS (the hostnames clients use), so web pages can't reach the server through DNS rebinding")
+		}
 	}
 
 	if t.FilesDir, err = filesDir(get("CRUNCH_FILES_DIR")); err != nil {

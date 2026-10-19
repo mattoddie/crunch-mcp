@@ -42,8 +42,8 @@ The best defence is to limit what's possible, not to rely on the model behaving.
 | Server instructions | Built in | With writes on, the model is told to confirm amounts, dates and VAT with you before changing records and before issuing an invoice, and with email on, to show you the recipients and message first. This helps, but it isn't a security boundary. |
 | Careful updates | Built in | Updates fetch the current record and change only what was asked, so payments and attachments aren't lost by accident. |
 | No token output | Built in | No tool returns the access or refresh token. `crunch_auth_status` and `crunch-mcp status` describe the login without showing it. |
-| Endpoint auth | `MCP_AUTH_TOKEN` | Bearer token required on every request, checked in constant time. The http transport refuses to start without one unless `MCP_ALLOW_UNAUTHENTICATED=true`. The binary listens on `127.0.0.1` unless `MCP_HTTP_HOST` says otherwise. |
-| Host allow-list | `MCP_ALLOWED_HOSTS` | Rejects requests with an unexpected `Host` header, and browser requests from an `Origin` that isn't on the list. This blocks DNS-rebinding and cross-site attacks from browser pages. |
+| Endpoint auth | `MCP_AUTH_TOKEN` | Bearer token of at least 16 characters required on every request, checked in constant time. The http transport refuses to start without one unless `MCP_ALLOW_UNAUTHENTICATED=true`, which also requires `MCP_ALLOWED_HOSTS`. The binary listens on `127.0.0.1` unless `MCP_HTTP_HOST` says otherwise. |
+| Host allow-list | `MCP_ALLOWED_HOSTS` | Rejects requests with an unexpected `Host` header, and browser requests from an `Origin` (even an empty one, or `null`) that isn't on the list. An `Origin` entry without a port matches only the default port. This blocks DNS-rebinding and cross-site attacks from browser pages. |
 | Login listener | Built in | `crunch-mcp login` listens on the loopback address of the redirect URI (publish it as `127.0.0.1:8976:8976` in Docker) and only accepts the redirect carrying the `state` of the login it started. |
 | Container | Built in | A distroless image with no shell, running as a non-root user. The default `compose.yaml` uses a read-only root filesystem, `cap_drop: [ALL]` and `no-new-privileges`. |
 
@@ -95,7 +95,7 @@ If you set `CRUNCH_SCOPES=all`, or turn writes off without logging in again, the
 
 ## Network exposure
 
-- Set `MCP_AUTH_TOKEN` to a long random value, even on a home network. The http transport won't start without it unless you set `MCP_ALLOW_UNAUTHENTICATED=true`, which is only for a server behind something else that authenticates every request.
+- Set `MCP_AUTH_TOKEN` to a long random value, even on a home network (at least 16 characters; `openssl rand -hex 32` gives 64). The http transport won't start without it unless you set `MCP_ALLOW_UNAUTHENTICATED=true`, which is only for a server behind something else that authenticates every request, and which then requires `MCP_ALLOWED_HOSTS` so web pages can't reach it through DNS rebinding.
 - Publish the port only where it's needed: on a LAN address, or on `127.0.0.1` behind a reverse proxy.
 - **Never expose port 8080 directly to the internet.** If traffic crosses a network you don't trust, put TLS in front of it. See [Deployment](deployment.md#tls-with-a-reverse-proxy). Prefer a VPN to a public endpoint.
 - Set `MCP_ALLOWED_HOSTS` to the hostname clients use.
