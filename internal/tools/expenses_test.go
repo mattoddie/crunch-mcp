@@ -205,3 +205,16 @@ func TestExpensesTotalAndTypes(t *testing.T) {
 		t.Error("deprecated types should be excluded by default")
 	}
 }
+
+func TestMaxItemsIsCapped(t *testing.T) {
+	env := newEnv(t)
+	page := make([]any, 200)
+	for i := range page {
+		page[i] = Obj{"id": i}
+	}
+	env.mock.On("GET", "/expenses", crunchtest.JSON(Obj{"content": page, "last": false}))
+	res := env.obj("crunch_list_expenses", map[string]any{"all": true, "max_items": 1000000})
+	if num(res["returned"]) != 10000 || res["truncated"] != true {
+		t.Errorf("returned %v, truncated %v", res["returned"], res["truncated"])
+	}
+}

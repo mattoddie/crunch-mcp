@@ -88,6 +88,22 @@ type File struct {
 
 const maxRetries = 3
 
+// maxResponseBytes caps what is read from one API response, so a broken or hostile
+// endpoint can't exhaust memory.
+const maxResponseBytes = 64 << 20
+
+// readLimited reads a response body, failing rather than truncating it past maxResponseBytes.
+func readLimited(r io.Reader) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, maxResponseBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxResponseBytes {
+		return nil, fmt.Errorf("the response is larger than %d MiB", maxResponseBytes>>20)
+	}
+	return data, nil
+}
+
 // Client calls the Crunch public REST API (https://public-api.crunch.co.uk/v1).
 // Paths are relative to the API root and include the service, e.g. /expenses/vat-types.
 // It sends the OAuth bearer token, refreshing it once on a 401, and retries when rate limited.
@@ -141,7 +157,7 @@ func (c *Client) Do(ctx context.Context, method, path string, q Query, body, out
 		return err
 	}
 	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
+	data, err := readLimited(resp.Body)
 	if err != nil {
 		return fmt.Errorf("%s %s: reading the response: %w", method, path, err)
 	}
@@ -167,7 +183,7 @@ func (c *Client) GetFile(ctx context.Context, path string, q Query) (*File, erro
 		return nil, err
 	}
 	defer resp.Body.Close()
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
+	data, err := readLimited(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("GET %s: reading the file: %w", path, err)
 	}

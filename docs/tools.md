@@ -309,7 +309,7 @@ List payments recorded in Crunch against a bank account (supplier payments, cust
 | `bank_account_id` | integer | yes | Bank account ID (see crunch_list_bank_accounts) |
 | `reconciled` | boolean | yes | true for payments matched to bank statement entries, false for those still waiting to be reconciled |
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000) |
+| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `size` | integer |  | Results per page, up to 200 (default 50) |
@@ -716,7 +716,7 @@ List expenses (purchases, receipts and bills), newest first, filtered by supplie
 | `end_date` | string |  | Expenses dated on or before (YYYY-MM-DD) |
 | `expense_type` | string |  | Only this expense type, for example TRAVEL_AND_SUBSISTENCE |
 | `has_attachment` | boolean |  | Only expenses with (true) or without (false) a receipt attached |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000) |
+| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `payment_end_date` | string |  | Paid on or before (YYYY-MM-DD) |
 | `payment_method` | string |  | Only expenses paid this way, for example EFT |
@@ -837,7 +837,7 @@ List recurring expenses (regular bills such as rent, phone or software subscript
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000) |
+| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `size` | integer |  | Results per page, up to 200 (default 50) |
@@ -1063,7 +1063,7 @@ List sales invoices, newest first: number, customer, dates, status, amounts and 
 |---|---|---|---|
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
 | `client_id` | integer |  | Only this client's invoices (see crunch_list_clients) |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000) |
+| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `size` | integer |  | Results per page, up to 200 (default 50) |

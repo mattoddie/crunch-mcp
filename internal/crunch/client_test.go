@@ -131,3 +131,17 @@ func TestRedirectsAreNotFollowed(t *testing.T) {
 		t.Errorf("redirect: %v (followed %v)", err, followed)
 	}
 }
+
+func TestOversizedResponsesFail(t *testing.T) {
+	m := crunchtest.New()
+	defer m.Server.Close()
+	big := make([]byte, 64<<20+1)
+	m.On("GET", "/big", func(crunchtest.Request, []string) (int, any) { return 200, big })
+	c := staticClient(t, m)
+	if err := c.Get(context.Background(), "/big", nil, new(any)); err == nil || !strings.Contains(err.Error(), "larger than 64 MiB") {
+		t.Errorf("Get: %v", err)
+	}
+	if _, err := c.GetFile(context.Background(), "/big", nil); err == nil || !strings.Contains(err.Error(), "larger than 64 MiB") {
+		t.Errorf("GetFile: %v", err)
+	}
+}

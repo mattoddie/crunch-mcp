@@ -22,8 +22,11 @@ type PageArgs struct {
 	Size     *int   `json:"size,omitempty" jsonschema:"Results per page, up to 200 (default 50)"`
 	Sort     string `json:"sort,omitempty" jsonschema:"Sort order as field,asc or field,desc, for example postingDate,desc"`
 	All      bool   `json:"all,omitempty" jsonschema:"Fetch every page (up to max_items) instead of a single page"`
-	MaxItems *int   `json:"max_items,omitempty" jsonschema:"With all=true, stop after this many results (default 1000)"`
+	MaxItems *int   `json:"max_items,omitempty" jsonschema:"With all=true, stop after this many results (default 1000, at most 10000)"`
 }
+
+// maxPagedItems caps max_items, so one call can't page through an unbounded number of results.
+const maxPagedItems = 10000
 
 // fetchPaged fetches one page, or every page with All, and maps the items.
 func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Query, a PageArgs, defaultSort string, mapFn func(Obj) Obj) (Obj, error) {
@@ -74,7 +77,7 @@ func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 	}
 	maxItems := 1000
 	if a.MaxItems != nil && *a.MaxItems > 0 {
-		maxItems = *a.MaxItems
+		maxItems = min(*a.MaxItems, maxPagedItems)
 	}
 	var items []Obj
 	var total any
