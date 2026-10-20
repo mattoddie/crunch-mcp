@@ -191,7 +191,7 @@ func registerInvoices(c *Context) {
 	}
 	putInvoice := func(ctx context.Context, id int64, body Obj) (Obj, error) {
 		var i Obj
-		return i, cl.Put(ctx, path("/invoices/%d", id), nil, body, &i)
+		return i, cl.Put(ctx, path("/invoices/%d", id), nil, pinID(body, id), &i)
 	}
 
 	add(c, Def{
@@ -284,6 +284,7 @@ func registerInvoices(c *Context) {
 	add(c, Def{
 		Toolset: "invoices", Name: "crunch_download_invoice_pdf", Title: "Download invoice PDF",
 		Description: "Download a sales invoice as a PDF, as Crunch renders it for the customer. Returned as an embedded resource; use save_to to also write it to disk (when the server sets CRUNCH_FILES_DIR).",
+		ReadOnly:    c.downloadReadOnly(),
 	}, func(ctx context.Context, a downloadInvoicePDFArgs) (any, error) {
 		f, err := cl.GetFile(ctx, path("/invoices/%d/pdf", a.InvoiceID), nil)
 		if err != nil {
@@ -298,6 +299,7 @@ func registerInvoices(c *Context) {
 	add(c, Def{
 		Toolset: "invoices", Name: "crunch_download_invoice_attachment", Title: "Download invoice attachment",
 		Description: "Download a file attached to a sales invoice. Attachment IDs and names come from crunch_get_invoice.",
+		ReadOnly:    c.downloadReadOnly(),
 	}, func(ctx context.Context, a downloadInvoiceAttachmentArgs) (any, error) {
 		name := a.FileName
 		if name == "" {

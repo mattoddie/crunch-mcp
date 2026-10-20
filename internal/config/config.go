@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -51,11 +52,16 @@ func AllTools() Tools {
 	return t
 }
 
+// MinAuthTokenLength is the shortest MCP_AUTH_TOKEN accepted.
+const MinAuthTokenLength = 16
+
 // HTTP holds the Streamable HTTP transport settings.
 type HTTP struct {
-	Host         string
-	Port         int
-	AuthToken    string
+	Host                 string
+	Port                 int
+	AuthToken            string
+	AllowUnauthenticated bool
+	// AllowedHosts are host or host:port entries checked against the Host and Origin headers.
 	AllowedHosts []string
 }
 
@@ -112,15 +118,35 @@ func positiveInt(name, v string, fallback int) (int, error) {
 	return n, nil
 }
 
-func checkURL(name, v string) (string, error) {
+// checkURL validates a configured URL. Credentials in it are refused (they would be sent
+// with every request and show up in logs). With cloud set, plain http:// is only accepted
+// for loopback hosts, such as a local mock: the Crunch API and OAuth server carry bearer
+// tokens and the client secret, which must not cross a network in cleartext.
+func checkURL(name, v string, cloud bool) (string, error) {
 	u, err := url.Parse(v)
 	if err != nil || u.Host == "" {
 		return "", fmt.Errorf("%s is not a valid URL: %s", name, v)
 	}
-	if u.Scheme != "https" && u.Scheme != "http" {
+	if u.User != nil {
+		return "", fmt.Errorf("%s must not contain a user name or password", name)
+	}
+	switch {
+	case u.Scheme == "https":
+	case u.Scheme == "http" && (!cloud || isLoopback(u.Hostname())):
+	case cloud:
+		return "", fmt.Errorf("%s must use https:// (http:// is only allowed for localhost), got %s", name, v)
+	default:
 		return "", fmt.Errorf("%s must use https:// (or http://), got %s", name, v)
 	}
 	return strings.TrimRight(v, "/"), nil
+}
+
+func isLoopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // DefaultScopes are the least-privilege scopes for the enabled tools, plus offline_access for a refresh token.
@@ -202,13 +228,13 @@ func Load(env Env) (*Config, error) {
 	}
 
 	c := &cfg.Crunch
-	if c.APIURL, err = checkURL("CRUNCH_API_URL", or(get("CRUNCH_API_URL"), "https://public-api.crunch.co.uk/v1")); err != nil {
+	if c.APIURL, err = checkURL("CRUNCH_API_URL", or(get("CRUNCH_API_URL"), "https://public-api.crunch.co.uk/v1"), true); err != nil {
 		return nil, err
 	}
-	if c.AuthURL, err = checkURL("CRUNCH_AUTH_URL", or(get("CRUNCH_AUTH_URL"), "https://oauth.crunch.co.uk")); err != nil {
+	if c.AuthURL, err = checkURL("CRUNCH_AUTH_URL", or(get("CRUNCH_AUTH_URL"), "https://oauth.crunch.co.uk"), true); err != nil {
 		return nil, err
 	}
-	if c.RedirectURI, err = checkURL("CRUNCH_REDIRECT_URI", or(get("CRUNCH_REDIRECT_URI"), "http://127.0.0.1:8976/callback")); err != nil {
+	if c.RedirectURI, err = checkURL("CRUNCH_REDIRECT_URI", or(get("CRUNCH_REDIRECT_URI"), "http://127.0.0.1:8976/callback"), false); err != nil {
 		return nil, err
 	}
 	c.ClientID = get("CRUNCH_CLIENT_ID")
@@ -239,8 +265,19 @@ func Load(env Env) (*Config, error) {
 		return nil, err
 	}
 	// An HTTP server without a token would hand every enabled tool to anyone who can reach the port.
-	if cfg.Transport == "http" && h.AuthToken == "" && !unauth {
-		return nil, errors.New("MCP_AUTH_TOKEN is required for the http transport (generate one with: openssl rand -hex 32); set MCP_ALLOW_UNAUTHENTICATED=true only behind something else that authenticates")
+	h.AllowUnauthenticated = unauth
+	if cfg.Transport == "http" {
+		switch {
+		case h.AuthToken == "" && !unauth:
+			return nil, errors.New("MCP_AUTH_TOKEN is required for the http transport (generate one with: openssl rand -hex 32); set MCP_ALLOW_UNAUTHENTICATED=true only behind something else that authenticates")
+		case h.AuthToken != "" && len(h.AuthToken) < MinAuthTokenLength:
+			return nil, fmt.Errorf("MCP_AUTH_TOKEN must be at least %d characters (generate one with: openssl rand -hex 32)", MinAuthTokenLength)
+		case h.AuthToken == "" && len(h.AllowedHosts) == 0:
+			// Without a token, nothing stops a web page the user visits from reaching the
+			// server through DNS rebinding (its own hostname resolving to this address),
+			// except checking the Host header against a list.
+			return nil, errors.New("MCP_ALLOW_UNAUTHENTICATED=true also requires MCP_ALLOWED_HOSTS (the hostnames clients use), so web pages can't reach the server through DNS rebinding")
+		}
 	}
 
 	if t.FilesDir, err = filesDir(get("CRUNCH_FILES_DIR")); err != nil {

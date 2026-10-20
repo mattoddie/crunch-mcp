@@ -132,7 +132,8 @@ func registerRecurring(c *Context) {
 		if len(patch) == 0 && len(a.Changes) == 0 {
 			return nil, errors.New("nothing to change")
 		}
-		body := deepMerge(deepMerge(current, patch), a.Changes)
+		body := pinID(deepMerge(deepMerge(current, patch), a.Changes), a.RecurringExpenseID)
+		pinNestedID(body, current, "recurringEvent")
 		if err := c.checkKeepsEntries(current, body); err != nil {
 			return nil, err
 		}

@@ -22,8 +22,11 @@ type PageArgs struct {
 	Size     *int   `json:"size,omitempty" jsonschema:"Results per page, up to 200 (default 50)"`
 	Sort     string `json:"sort,omitempty" jsonschema:"Sort order as field,asc or field,desc, for example postingDate,desc"`
 	All      bool   `json:"all,omitempty" jsonschema:"Fetch every page (up to max_items) instead of a single page"`
-	MaxItems *int   `json:"max_items,omitempty" jsonschema:"With all=true, stop after this many results (default 1000)"`
+	MaxItems *int   `json:"max_items,omitempty" jsonschema:"With all=true, stop after this many results (default 1000, at most 10000)"`
 }
+
+// maxPagedItems caps max_items, so one call can't page through an unbounded number of results.
+const maxPagedItems = 10000
 
 // fetchPaged fetches one page, or every page with All, and maps the items.
 func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Query, a PageArgs, defaultSort string, mapFn func(Obj) Obj) (Obj, error) {
@@ -74,7 +77,7 @@ func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 	}
 	maxItems := 1000
 	if a.MaxItems != nil && *a.MaxItems > 0 {
-		maxItems = *a.MaxItems
+		maxItems = min(*a.MaxItems, maxPagedItems)
 	}
 	var items []Obj
 	var total any
@@ -344,4 +347,46 @@ func fileResult(c *Context, f *crunch.File, fallbackName, uri, saveTo string) (R
 	text := textResult(meta)
 	text.Content = append(text.Content, content...)
 	return Result{text}, nil
+}
+
+// pinID makes an update body name the record at the path being updated. The body
+// starts from the record fetched at that path, but `changes` and `extra` come from
+// the model and could set another id, so Crunch might update a different record
+// from the one the access checks looked at.
+func pinID(body Obj, id int64) Obj {
+	for k := range body {
+		if strings.EqualFold(k, "id") {
+			delete(body, k)
+		}
+	}
+	body["id"] = id
+	return body
+}
+
+// pinNestedID keeps the id of an object owned by the record (such as a recurring
+// expense's recurringEvent) as it is in current, the record fetched from the API.
+func pinNestedID(body, current Obj, key string) {
+	cur, _ := current[key].(Obj)
+	if cur == nil || cur["id"] == nil {
+		return
+	}
+	nested, ok := body[key].(Obj)
+	if !ok {
+		return
+	}
+	nested = deepMerge(nested, nil)
+	for k := range nested {
+		if strings.EqualFold(k, "id") {
+			delete(nested, k)
+		}
+	}
+	nested["id"] = cur["id"]
+	body[key] = nested
+}
+
+// downloadReadOnly is the readOnlyHint of the download tools. With CRUNCH_FILES_DIR set,
+// their save_to writes files on the server, so they aren't read-only (though never
+// destructive: existing files are not overwritten).
+func (c *Context) downloadReadOnly() *bool {
+	return boolPtr(c.FilesDir == "")
 }

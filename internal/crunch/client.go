@@ -88,6 +88,22 @@ type File struct {
 
 const maxRetries = 3
 
+// maxResponseBytes caps what is read from one API response, so a broken or hostile
+// endpoint can't exhaust memory.
+const maxResponseBytes = 64 << 20
+
+// readLimited reads a response body, failing rather than truncating it past maxResponseBytes.
+func readLimited(r io.Reader) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, maxResponseBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxResponseBytes {
+		return nil, fmt.Errorf("the response is larger than %d MiB", maxResponseBytes>>20)
+	}
+	return data, nil
+}
+
 // Client calls the Crunch public REST API (https://public-api.crunch.co.uk/v1).
 // Paths are relative to the API root and include the service, e.g. /expenses/vat-types.
 // It sends the OAuth bearer token, refreshing it once on a 401, and retries when rate limited.
@@ -99,7 +115,13 @@ type Client struct {
 
 // New creates a client and loads any saved tokens.
 func New(cfg config.Crunch) (*Client, error) {
-	hc := &http.Client{Timeout: cfg.Timeout}
+	hc := &http.Client{
+		Timeout: cfg.Timeout,
+		// Redirects aren't followed: one could send the bearer token, or the client secret
+		// on /token, somewhere other than the configured https URL (even downgrading to
+		// http on the same host). A 3xx is reported as an error instead.
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
 	auth, err := NewAuth(cfg, hc)
 	if err != nil {
 		return nil, err
@@ -135,7 +157,7 @@ func (c *Client) Do(ctx context.Context, method, path string, q Query, body, out
 		return err
 	}
 	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
+	data, err := readLimited(resp.Body)
 	if err != nil {
 		return fmt.Errorf("%s %s: reading the response: %w", method, path, err)
 	}
@@ -161,7 +183,7 @@ func (c *Client) GetFile(ctx context.Context, path string, q Query) (*File, erro
 		return nil, err
 	}
 	defer resp.Body.Close()
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
+	data, err := readLimited(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("GET %s: reading the file: %w", path, err)
 	}
@@ -220,7 +242,7 @@ func (c *Client) send(ctx context.Context, method, path string, q Query, body an
 			}
 			continue
 		}
-		if (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable) && attempt < maxRetries {
+		if retryable(method, resp.StatusCode) && attempt < maxRetries {
 			resp.Body.Close()
 			delay := time.Duration(250<<attempt) * time.Millisecond
 			if s, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && s > 0 {
@@ -237,9 +259,23 @@ func (c *Client) send(ctx context.Context, method, path string, q Query, body an
 		resp.Body.Close()
 		return nil, &Error{
 			Status:  resp.StatusCode,
-			Message: fmt.Sprintf("%s %s failed (HTTP %d): %s.%s", method, path, resp.StatusCode, errorMessage(resp.StatusCode, data), hint(resp.StatusCode, method)),
+			Message: fmt.Sprintf("%s %s failed (HTTP %d). Crunch's error message (quoted from the API): \"%s\".%s", method, path, resp.StatusCode, upstreamText(errorMessage(resp.StatusCode, data)), hint(resp.StatusCode, method)),
 		}
 	}
+}
+
+// retryable reports whether a failed request may be sent again. A 429 means Crunch
+// refused it before doing anything, so any method may be retried. A 503 may come after
+// the request took effect, so a POST (creating an expense, recording a payment, issuing
+// or emailing an invoice) is never repeated on one: it could do the thing twice.
+func retryable(method string, status int) bool {
+	switch status {
+	case http.StatusTooManyRequests:
+		return true
+	case http.StatusServiceUnavailable:
+		return method != http.MethodPost
+	}
+	return false
 }
 
 // errorMessage pulls a readable message out of a Crunch (Spring) error body.

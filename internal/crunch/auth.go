@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/mattoddie/crunch-mcp/internal/config"
 )
@@ -43,6 +45,22 @@ type tokenResponse struct {
 	Scope        string `json:"scope"`
 }
 
+// failedRefresh remembers a refresh that failed, so it isn't retried on every call.
+type failedRefresh struct {
+	refreshToken string
+	rejected     bool // Crunch refused the refresh token (HTTP 4xx other than 429), so it will never work
+	at           time.Time
+	err          error
+}
+
+// tokenError is an error response from the token endpoint.
+type tokenError struct {
+	status int
+	msg    string
+}
+
+func (e *tokenError) Error() string { return e.msg }
+
 type pendingLogin struct {
 	verifier string
 	created  time.Time
@@ -51,6 +69,9 @@ type pendingLogin struct {
 const (
 	expiryMargin    = time.Minute // refresh a little before the access token expires
 	pendingLoginTTL = 15 * time.Minute
+	// refreshRetryAfter is how long to wait after a refresh fails for a reason other than
+	// Crunch rejecting the refresh token, such as a network error.
+	refreshRetryAfter = 10 * time.Second
 )
 
 // ErrNotLoggedIn is returned when there are no credentials at all.
@@ -122,8 +143,9 @@ type Auth struct {
 	pending        map[string]pendingLogin
 	lastError      string
 	persistWarning string
-	staticRejected bool      // CRUNCH_ACCESS_TOKEN is used until the API rejects it
-	fileMod        time.Time // modification time of the token file when last read or written
+	staticRejected bool           // CRUNCH_ACCESS_TOKEN is used until the API rejects it
+	failed         *failedRefresh // the last refresh that failed, until one succeeds
+	fileMod        time.Time      // modification time of the token file when last read or written
 
 	refreshMu sync.Mutex // serialises refreshes within this process; lockTokens does so across processes
 	lockWarn  sync.Once
@@ -302,10 +324,27 @@ func (a *Auth) Refresh(ctx context.Context, rejected string) (string, error) {
 	if a.cfg.ClientID == "" {
 		return "", errors.New("CRUNCH_CLIENT_ID is required to refresh the access token")
 	}
-	res, err := a.tokenRequest(ctx, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}})
+	// Don't send a refresh token Crunch has just refused again on every tool call: one it
+	// rejected won't start working (a new login replaces it), and after other failures,
+	// such as Crunch being unreachable, wait a little before trying again.
+	a.mu.Lock()
+	if f := a.failed; f != nil && f.refreshToken == refreshToken && (f.rejected || time.Since(f.at) < refreshRetryAfter) {
+		a.mu.Unlock()
+		return "", f.err
+	}
+	a.mu.Unlock()
+	// Once the request is sent, Crunch may rotate the refresh token, and the old one then
+	// can't be used again (reusing it revokes the whole grant). So the exchange, and saving
+	// whatever comes back, must not be cut short when the tool call that triggered the
+	// refresh is cancelled: they get their own timeout instead.
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), a.cfg.Timeout)
+	defer cancel()
+	res, err := a.tokenRequest(rctx, url.Values{"grant_type": {"refresh_token"}, "refresh_token": {refreshToken}})
 	if err != nil {
+		var te *tokenError
 		a.mu.Lock()
 		a.lastError = err.Error()
+		a.failed = &failedRefresh{refreshToken: refreshToken, rejected: errors.As(err, &te) && te.status/100 == 4 && te.status != http.StatusTooManyRequests, at: time.Now(), err: err}
 		a.mu.Unlock()
 		return "", err
 	}
@@ -369,12 +408,14 @@ func (a *Auth) PendingState(state string) bool {
 
 var urlish = regexp.MustCompile(`(?i)^https?://|^/|code=`)
 
-// CompleteLogin finishes a login started with StartLogin. It accepts the
-// full URL the browser was redirected to (preferred, as it carries the state)
-// or just the code.
-func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode string) (map[string]any, error) {
+// CompleteLogin finishes a login started with StartLogin. It accepts the full URL the
+// browser was redirected to (preferred, as it carries the state) or just the code, in
+// which case state must be the one StartLogin returned. A code without the state of a
+// pending login is refused, so a code from someone else's login can't be slipped in.
+func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode, state string) (map[string]any, error) {
 	input := strings.TrimSpace(redirectedURLOrCode)
-	var code, state string
+	state = strings.TrimSpace(state)
+	var code string
 	if urlish.MatchString(input) {
 		// Crunch's docs show the code appended with "&" even when the redirect URI has no query, so parse leniently.
 		query := input
@@ -385,7 +426,12 @@ func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode string) (m
 		}
 		query, _, _ = strings.Cut(query, "#")
 		params, _ := url.ParseQuery(query)
-		state = params.Get("state")
+		if s := params.Get("state"); s != "" {
+			if state != "" && s != state {
+				return nil, errors.New("the state in the URL doesn't match the state given. Start again")
+			}
+			state = s
+		}
 		if state != "" && !a.PendingState(state) {
 			return nil, errors.New("this login link has expired or wasn't started by this server (the state doesn't match). Start again")
 		}
@@ -402,32 +448,17 @@ func (a *Auth) CompleteLogin(ctx context.Context, redirectedURLOrCode string) (m
 	if code == "" {
 		return nil, errors.New("no authorisation code found. Paste the whole URL your browser was sent to after you clicked Allow")
 	}
+	if state == "" {
+		return nil, errors.New("the login's state is missing. Paste the whole URL your browser was sent to after you clicked Allow (it contains state=), or pass the state that starting the login returned")
+	}
 
 	a.mu.Lock()
-	var p pendingLogin
-	var found bool
-	if state != "" {
-		p, found = a.pending[state]
-		delete(a.pending, state)
-		if !found {
-			a.mu.Unlock()
-			return nil, errors.New("this login link has expired or wasn't started by this server (the state doesn't match). Start again")
-		}
-	} else {
-		// Only a bare code: use the most recent login attempt.
-		var latest string
-		for s, x := range a.pending {
-			if !found || x.created.After(p.created) {
-				latest, p, found = s, x, true
-			}
-		}
-		if !found {
-			a.mu.Unlock()
-			return nil, errors.New("there is no login in progress. Start one first")
-		}
-		delete(a.pending, latest)
-	}
+	p, found := a.pending[state]
+	delete(a.pending, state)
 	a.mu.Unlock()
+	if !found {
+		return nil, errors.New("this login link has expired or wasn't started by this server (the state doesn't match). Start again")
+	}
 	if time.Since(p.created) > pendingLoginTTL {
 		return nil, errors.New("this login attempt has expired. Start again")
 	}
@@ -479,6 +510,7 @@ func (a *Auth) accept(res *tokenResponse, seed string) string {
 	defer a.mu.Unlock()
 	a.tokens = t
 	a.lastError = ""
+	a.failed = nil
 	if err := a.Store.Save(t); err != nil {
 		// Carry on with the in-memory tokens, but a restart would need a new login.
 		a.persistWarning = fmt.Sprintf("could not save tokens to %s: %v. They will be lost on restart; mount a writable volume there", a.cfg.TokenFile, err)
@@ -528,6 +560,7 @@ func (a *Auth) tokenRequest(ctx context.Context, form url.Values) (*tokenRespons
 		if reason == "" {
 			reason = resp.Status
 		}
+		reason = upstreamText(truncate(reason, 500))
 		hint := ""
 		switch {
 		case form.Get("grant_type") == "refresh_token" && regexp.MustCompile(`(?i)invalid_grant|invalid_token|expired|revoked`).MatchString(reason):
@@ -537,7 +570,7 @@ func (a *Auth) tokenRequest(ctx context.Context, form url.Values) (*tokenRespons
 		case strings.Contains(strings.ToLower(reason), "redirect"):
 			hint = fmt.Sprintf(" Check that CRUNCH_REDIRECT_URI (%s) matches any redirect URI set on your Crunch API account.", a.cfg.RedirectURI)
 		}
-		return nil, fmt.Errorf("crunch token request failed (HTTP %d): %s.%s", resp.StatusCode, reason, hint)
+		return nil, &tokenError{status: resp.StatusCode, msg: fmt.Sprintf("crunch token request failed (HTTP %d): %s.%s", resp.StatusCode, reason, hint)}
 	}
 	var res tokenResponse
 	if err := json.Unmarshal(body, &res); err != nil || res.AccessToken == "" {
@@ -546,9 +579,30 @@ func (a *Auth) tokenRequest(ctx context.Context, form url.Values) (*tokenRespons
 	return &res, nil
 }
 
+// truncate shortens s to at most n bytes without splitting a UTF-8 character.
 func truncate(s string, n int) string {
-	if len(s) > n {
-		return s[:n]
+	if len(s) <= n {
+		return s
 	}
-	return s
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
+}
+
+// upstreamText makes text from a Crunch error response safe to show the model inside
+// quotes: control and invisible formatting characters (newlines, bidi overrides) become
+// spaces, and double quotes become single ones, so it can't break out of its quoting or
+// pass for crunch-mcp's own text.
+func upstreamText(s string) string {
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r == '"':
+			return '\''
+		case unicode.IsControl(r), unicode.Is(unicode.Cf, r), r == utf8.RuneError:
+			return ' '
+		}
+		return r
+	}, s)
+	return strings.Join(strings.Fields(s), " ")
 }

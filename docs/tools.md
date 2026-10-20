@@ -45,11 +45,12 @@ Login status and the OAuth login flow, the logged-in user, company details (VAT 
 
 🟢 read
 
-Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to (or just the code).
+Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `redirected_url` | string | yes | The full URL from the browser's address bar after clicking Allow (it contains code= and state=), or just the code |
+| `state` | string |  | The state crunch_auth_start returned; only needed when redirected_url is just the code |
 
 ### crunch_auth_start
 
@@ -308,7 +309,7 @@ List payments recorded in Crunch against a bank account (supplier payments, cust
 | `bank_account_id` | integer | yes | Bank account ID (see crunch_list_bank_accounts) |
 | `reconciled` | boolean | yes | true for payments matched to bank statement entries, false for those still waiting to be reconciled |
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000) |
+| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `size` | integer |  | Results per page, up to 200 (default 50) |
@@ -715,7 +716,7 @@ List expenses (purchases, receipts and bills), newest first, filtered by supplie
 | `end_date` | string |  | Expenses dated on or before (YYYY-MM-DD) |
 | `expense_type` | string |  | Only this expense type, for example TRAVEL_AND_SUBSISTENCE |
 | `has_attachment` | boolean |  | Only expenses with (true) or without (false) a receipt attached |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000) |
+| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `payment_end_date` | string |  | Paid on or before (YYYY-MM-DD) |
 | `payment_method` | string |  | Only expenses paid this way, for example EFT |
@@ -730,12 +731,13 @@ List expenses (purchases, receipts and bills), newest first, filtered by supplie
 
 🔴 delete · destructive
 
-Remove a payment from an expense, leaving the expense itself (it becomes unpaid or part-paid). Reconciled payments can't be removed. See crunch_get_expense for payment IDs.
+Remove a payment from an expense (or all of its payments with all=true), leaving the expense itself (it becomes unpaid or part-paid). Reconciled payments can't be removed. See crunch_get_expense for payment IDs.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
-| `payment_id` | integer |  | Payment to remove; omit to remove all of the expense's payments |
+| `all` | boolean |  | Remove every payment of the expense instead of one; payment_id must then be left out |
+| `payment_id` | integer |  | Payment to remove (see crunch_get_expense). Required unless all is true |
 
 ### crunch_update_expense
 
@@ -836,7 +838,7 @@ List recurring expenses (regular bills such as rent, phone or software subscript
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000) |
+| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `size` | integer |  | Results per page, up to 200 (default 50) |
@@ -1062,7 +1064,7 @@ List sales invoices, newest first: number, customer, dates, status, amounts and 
 |---|---|---|---|
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
 | `client_id` | integer |  | Only this client's invoices (see crunch_list_clients) |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000) |
+| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `size` | integer |  | Results per page, up to 200 (default 50) |

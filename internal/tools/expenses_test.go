@@ -142,6 +142,21 @@ func TestExpensePaymentsKeepExistingData(t *testing.T) {
 	if msg := env.callErr("crunch_remove_expense_payment", map[string]any{"expense_id": 77, "payment_id": 1}); !strings.Contains(msg, "no payment 1") {
 		t.Errorf("unknown payment: %s", msg)
 	}
+	// Leaving out payment_id no longer removes every payment.
+	puts := len(env.mock.Requests())
+	if msg := env.callErr("crunch_remove_expense_payment", map[string]any{"expense_id": 77}); !strings.Contains(msg, "all=true") {
+		t.Errorf("no payment_id: %s", msg)
+	}
+	if msg := env.callErr("crunch_remove_expense_payment", map[string]any{"expense_id": 77, "payment_id": 300, "all": true}); !strings.Contains(msg, "not both") {
+		t.Errorf("both: %s", msg)
+	}
+	if len(env.mock.Requests()) != puts {
+		t.Error("a refused removal reached Crunch")
+	}
+	env.obj("crunch_remove_expense_payment", map[string]any{"expense_id": 77, "all": true})
+	if p := env.mock.Last("PUT").Body.(Obj)["supplierPayments"].([]any); len(p) != 0 {
+		t.Errorf("all payments not removed: %v", p)
+	}
 }
 
 func TestUpdateExpenseMergesChanges(t *testing.T) {
@@ -203,5 +218,18 @@ func TestExpensesTotalAndTypes(t *testing.T) {
 	}
 	if env.mock.Last("GET").Query.Get("excludeDeprecated") != "true" {
 		t.Error("deprecated types should be excluded by default")
+	}
+}
+
+func TestMaxItemsIsCapped(t *testing.T) {
+	env := newEnv(t)
+	page := make([]any, 200)
+	for i := range page {
+		page[i] = Obj{"id": i}
+	}
+	env.mock.On("GET", "/expenses", crunchtest.JSON(Obj{"content": page, "last": false}))
+	res := env.obj("crunch_list_expenses", map[string]any{"all": true, "max_items": 1000000})
+	if num(res["returned"]) != 10000 || res["truncated"] != true {
+		t.Errorf("returned %v, truncated %v", res["returned"], res["truncated"])
 	}
 }

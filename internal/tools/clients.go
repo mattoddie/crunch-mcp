@@ -122,7 +122,7 @@ func registerClients(c *Context) {
 			merged["billingAddress"] = a.BillingAddress.body()
 		}
 		var out any
-		return out, cl.Put(ctx, p, nil, merge(merged, a.Extra), &out)
+		return out, cl.Put(ctx, p, nil, pinID(merge(merged, a.Extra), a.ClientID), &out)
 	})
 
 	add(c, Def{

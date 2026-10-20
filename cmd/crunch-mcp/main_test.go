@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -68,5 +69,36 @@ func TestOnlyServeNeedsTheAuthToken(t *testing.T) {
 	}
 	if _, _, err := load(false); err != nil {
 		t.Errorf("login and status don't serve, so don't need a token: %v", err)
+	}
+}
+
+func TestHealthcheckUsesTheListenAddress(t *testing.T) {
+	for host, want := range map[string]string{"": "127.0.0.1", "0.0.0.0": "127.0.0.1", "::": "::1", "192.168.1.5": "192.168.1.5", "[fd00::1]": "fd00::1"} {
+		if got := healthHost(host); got != want {
+			t.Errorf("%q: %q, want %q", host, got, want)
+		}
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/health" {
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	u, _ := url.Parse(srv.URL)
+	portFile := filepath.Join(t.TempDir(), "port")
+	if err := os.WriteFile(portFile, []byte(u.Port()+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("MCP_TRANSPORT", "http")
+	t.Setenv("MCP_AUTH_TOKEN", strings.Repeat("t", 16))
+	t.Setenv("MCP_HTTP_HOST", "0.0.0.0")
+	t.Setenv("MCP_HTTP_PORT_FILE", portFile)
+	if err := healthcheck(); err != nil {
+		t.Errorf("healthcheck: %v", err)
+	}
+	t.Setenv("MCP_HTTP_PORT_FILE", "")
+	t.Setenv("MCP_HTTP_PORT", "1")
+	if err := healthcheck(); err == nil {
+		t.Error("healthcheck of a closed port succeeded")
 	}
 }

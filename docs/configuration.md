@@ -25,8 +25,8 @@ The server checks the configuration at startup. If something is wrong, it exits 
 | `CRUNCH_REFRESH_TOKEN` | | A refresh token to start from, instead of logging in. It's saved to the token file and replaced as it rotates. See [Starting from a refresh token](#starting-from-a-refresh-token). |
 | `CRUNCH_ACCESS_TOKEN` | | A fixed access token, used until Crunch rejects it. Handy for a quick test. It lasts about an hour, and after that the server needs a refresh token or a login. |
 | `CRUNCH_LOGIN_LISTEN` | the redirect URI's host and port, such as `127.0.0.1:8976` (`0.0.0.0:8976` in the image) | The address `crunch-mcp login` listens on to catch the redirect. The image sets `0.0.0.0:8976` so a published port reaches the container: publish it on loopback only, with `-p 127.0.0.1:8976:8976`. The listener only accepts the redirect for the login it started (the `state` must match), and stops when the login finishes. |
-| `CRUNCH_API_URL` | `https://public-api.crunch.co.uk/v1` | The Crunch public API. You shouldn't need to change it. |
-| `CRUNCH_AUTH_URL` | `https://oauth.crunch.co.uk` | The Crunch OAuth server (with `/authorize` and `/token`). You shouldn't need to change it. |
+| `CRUNCH_API_URL` | `https://public-api.crunch.co.uk/v1` | The Crunch public API. You shouldn't need to change it. Must be `https://` (plain `http://` only for a loopback host, such as a local mock), without a user name or password in it. |
+| `CRUNCH_AUTH_URL` | `https://oauth.crunch.co.uk` | The Crunch OAuth server (with `/authorize` and `/token`). You shouldn't need to change it. The same `https://` rule applies: the client secret and refresh tokens are sent here. |
 | `CRUNCH_TIMEOUT_MS` | `30000` | Timeout for each request to Crunch, in milliseconds. |
 
 ## How login works
@@ -96,7 +96,7 @@ Don't use the same refresh token anywhere else afterwards. Its first use by crun
 | `CRUNCH_ALLOW_WRITES` | `false` | Register tools that create or change records: expenses, payments, attachments, invoices (including issuing them), clients, suppliers, recurring expenses, bank accounts and credit cards. |
 | `CRUNCH_ALLOW_DELETES` | `false` | Also register tools that delete records or remove payments. Without it, updates (including `changes` and raw `PUT` requests) must keep a record's existing payments and attachments, because Crunch deletes whatever an update leaves out. Requires `CRUNCH_ALLOW_WRITES=true`. |
 | `CRUNCH_ALLOW_EMAIL` | `false` | Also register `crunch_email_invoice`, which emails an invoice to a customer from Crunch, and allow turning on Crunch's payment reminders (`send_reminders`, or `sendReminders` in `extra`, `changes` or raw requests), which are emails too. Requires `CRUNCH_ALLOW_WRITES=true`. |
-| `CRUNCH_FILES_DIR` | (unset: disabled) | A directory the server may read attachments from (`file_path`) and save downloads to (`save_to`). Paths are relative to it or absolute inside it, and may not lead out of it through `..` or symlinks. The token file, its lock and temporary files, and anything under `/run/secrets` are always refused. When unset, `file_path` and `save_to` are refused: send attachments as `content_base64` and use the downloaded content instead. In Docker, mount a folder for it, for example `./files:/files` with `CRUNCH_FILES_DIR=/files`. It applies at every access level, since saving a download is local, not a change in Crunch. |
+| `CRUNCH_FILES_DIR` | (unset: disabled) | A directory the server may read attachments from (`file_path`) and save downloads to (`save_to`). Paths are relative to it or absolute inside it, and may not lead out of it through `..` or symlinks. The token file, its lock and temporary files, and anything under `/run/secrets` are always refused. When unset, `file_path` and `save_to` are refused: send attachments as `content_base64` and use the downloaded content instead. In Docker, mount a folder for it, for example `./files:/files` with `CRUNCH_FILES_DIR=/files`. It applies at every access level, since saving a download is local, not a change in Crunch. While it is set, the download tools are no longer annotated read-only, so MCP clients that confirm non-read-only tools ask before a download. |
 | `CRUNCH_TOOLSETS` | `all` | Comma-separated list of [toolsets](#choosing-toolsets) to expose. |
 
 Boolean variables accept `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. Anything else stops the server with an error.
@@ -136,15 +136,15 @@ Tools that aren't allowed are **not registered at all**. The assistant can't see
 | `MCP_TRANSPORT` | `http` in the Docker image (`stdio` for the binary) | `http` for Streamable HTTP, or `stdio`. |
 | `MCP_HTTP_HOST` | `127.0.0.1` (`0.0.0.0` in the Docker image) | Address to listen on (HTTP only). The binary listens on loopback only unless you set this; the image listens on all interfaces so a published port reaches it. |
 | `MCP_HTTP_PORT` | `8080` | Port to listen on (HTTP only). |
-| `MCP_AUTH_TOKEN` | (required for http) | Every request to `/mcp` must send `Authorization: Bearer <token>`. The server refuses to start in http mode without it. Generate one with `openssl rand -hex 32`. |
-| `MCP_ALLOW_UNAUTHENTICATED` | `false` | Start the http transport without `MCP_AUTH_TOKEN`. Only for a server that sits behind something else that authenticates every request. |
-| `MCP_ALLOWED_HOSTS` | | Comma-separated allow-list of `Host` header values, such as `crunch-mcp.lan,crunch-mcp.lan:8080`. Requests with any other `Host` are rejected, which protects against DNS-rebinding attacks from web pages in your browser. Browser requests whose `Origin` header names a host that isn't on the list are rejected too, so other websites can't call the tools. Requests without an `Origin` (MCP clients that aren't browsers) are unaffected. |
+| `MCP_AUTH_TOKEN` | (required for http) | Every request to `/mcp` must send `Authorization: Bearer <token>`. The server refuses to start in http mode without it, or if it is shorter than 16 characters. Generate one with `openssl rand -hex 32`. |
+| `MCP_ALLOW_UNAUTHENTICATED` | `false` | Start the http transport without `MCP_AUTH_TOKEN`. Only for a server that sits behind something else that authenticates every request. It also requires `MCP_ALLOWED_HOSTS`, because without a token the Host check is all that stops DNS rebinding; the server logs a warning at startup. |
+| `MCP_ALLOWED_HOSTS` | | Comma-separated allow-list of `host` or `host:port` entries, such as `crunch-mcp.lan`. Requests with any other `Host` header are rejected, which protects against DNS-rebinding attacks from web pages in your browser. For the `Host` header, an entry without a port matches any port. Browser requests with an `Origin` header (including an empty one, or `null`) that isn't on the list are rejected too, so other websites can't call the tools. For `Origin`, an entry without a port matches only the scheme's default port (443 or 80); to allow a page on another port, list it as `host:port`, such as `localhost:5173`. Requests without an `Origin` (MCP clients that aren't browsers) are unaffected. |
 
 The HTTP server exposes these endpoints:
 
 | Path | Method | Purpose |
 |---|---|---|
-| `/mcp` | `POST` | The MCP endpoint (stateless Streamable HTTP, JSON responses). Request bodies are limited to 16 MiB, enough for attachments sent as base64. |
+| `/mcp` | `POST` | The MCP endpoint (stateless Streamable HTTP, JSON responses). Other methods get `405`. The body must be JSON, and is limited to 16 MiB, enough for attachments sent as base64. |
 | `/health`, `/healthz` | `GET` | Liveness check. Returns `{"status":"ok"}` and doesn't contact Crunch. |
 
 ## Docker secrets (`_FILE` variables)

@@ -32,6 +32,8 @@ jobs:
           CGO_ENABLED: "1"
       - name: Check docs/tools.md is up to date
         run: make docs-check
+      - name: Check for known vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
   docker:
     name: Docker image
@@ -55,17 +57,20 @@ jobs:
 
       - name: Smoke test
         run: |
-          docker run -d --name smoke -p 8080:8080 -e MCP_AUTH_TOKEN=ci -e CRUNCH_CLIENT_ID=ci crunch-mcp:ci
+          token=$(openssl rand -hex 32)
+          docker run -d --name smoke -p 8080:8080 -e MCP_AUTH_TOKEN="$token" -e CRUNCH_CLIENT_ID=ci crunch-mcp:ci
           for i in $(seq 1 30); do curl -fsS http://localhost:8080/health && break; sleep 1; done
           echo
           tools=$(curl -fsS -X POST http://localhost:8080/mcp \
-            -H 'Authorization: Bearer ci' -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
             -H 'Accept: application/json, text/event-stream' \
             -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools | length')
           echo "Tools registered: $tools"
           test "$tools" -gt 0
           code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/mcp -d '{}')
           test "$code" = 401
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" http://localhost:8080/mcp)
+          test "$code" = 405
           sleep 6
           test "$(docker inspect --format '{{.State.Health.Status}}' smoke)" = healthy
           docker logs smoke

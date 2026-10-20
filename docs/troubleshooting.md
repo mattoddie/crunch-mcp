@@ -22,9 +22,12 @@ Run `docker compose logs crunch-mcp`. The last line names the problem, for examp
 | `CRUNCH_ALLOW_WRITES must be true or false, got "…"` | Fix the value. Booleans accept `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. |
 | `unknown toolset "x" in CRUNCH_TOOLSETS; valid: …` | Fix the typo. The message lists the valid names. |
 | `MCP_TRANSPORT must be stdio or http, got "…"` | Fix the value. |
+| `MCP_AUTH_TOKEN must be at least 16 characters` | Use a longer random value: `openssl rand -hex 32`. |
+| `MCP_ALLOW_UNAUTHENTICATED=true also requires MCP_ALLOWED_HOSTS …` | Set `MCP_ALLOWED_HOSTS` to the hostnames your clients (or the proxy in front) use, or set `MCP_AUTH_TOKEN` instead. |
 | `MCP_AUTH_TOKEN is required for the http transport …` | Set `MCP_AUTH_TOKEN` to a long random value (`openssl rand -hex 32`) and give it to your MCP clients. Only if something in front of the server already authenticates every request, set `MCP_ALLOW_UNAUTHENTICATED=true` instead. |
 | `CRUNCH_FILES_DIR (…) must be an existing directory` | Create the directory (in Docker, mount it), or unset the variable. |
-| `CRUNCH_API_URL must use https:// (or http://), got …` | Include the scheme, or remove the variable to use the default. The same applies to `CRUNCH_AUTH_URL` and `CRUNCH_REDIRECT_URI`. |
+| `CRUNCH_API_URL must use https:// (http:// is only allowed for localhost), got …` | The Crunch API and OAuth server must be reached over `https://`. Include the scheme, or remove the variable to use the default. The same applies to `CRUNCH_AUTH_URL`; `CRUNCH_REDIRECT_URI` may also use `http://`. |
+| `… must not contain a user name or password` | Remove the `user:password@` part from the URL. |
 | `MCP_HTTP_PORT must be a positive integer, got "…"` | Fix the value. The same applies to `CRUNCH_TIMEOUT_MS`. |
 | `could not read CRUNCH_CLIENT_SECRET_FILE (…)` | The secret file isn't mounted where the variable points. |
 | `the token file /data/tokens.json is not valid JSON; delete it and log in again` | The file was damaged or edited by hand. Delete it and [log in](getting-started.md#3-log-in-to-crunch) again. |
@@ -36,9 +39,9 @@ Run `docker compose logs crunch-mcp`. The last line names the problem, for examp
 2. **Right host?** The port is published on the machine running Docker. If Docker runs on another machine (for example with `DOCKER_HOST`), `localhost` won't work.
 3. **Right path?** The endpoint is `/mcp`, so the URL is `http://<docker-host>:8080/mcp`.
 4. **`401 Unauthorized`:** the client isn't sending `Authorization: Bearer <MCP_AUTH_TOKEN>`, or the token doesn't match. Watch for stray quotes or spaces in `.env`.
-5. **`403 Host … is not allowed`** or **`403 Origin … is not allowed`:** add the hostname the client uses (or, for a browser-based client, the host of the page it runs on) to `MCP_ALLOWED_HOSTS`, or unset it.
+5. **`403 Host … is not allowed`** or **`403 Origin … is not allowed`:** add the hostname the client uses (or, for a browser-based client, the host of the page it runs on) to `MCP_ALLOWED_HOSTS`, or unset it. An `Origin` on a port other than 443 or 80, such as `http://localhost:5173`, must be listed with its port.
 6. **Running the binary, and other machines can't connect:** it listens on `127.0.0.1` unless you set `MCP_HTTP_HOST`, for example to `0.0.0.0`.
-7. **The client expects SSE:** the server is stateless and answers `POST` requests with JSON. Make sure the client is set to *Streamable HTTP* (often called `http`), not `sse`.
+7. **The client expects SSE:** the server is stateless and answers `POST` requests with JSON; other methods get `405 Method not allowed`. Make sure the client is set to *Streamable HTTP* (often called `http`), not `sse`.
 8. **stdio clients show nothing:** check that the command has `-i` and not `-t`, and that `MCP_TRANSPORT=stdio` is set when using the image, which defaults to HTTP.
 
 ## Logging in
@@ -85,6 +88,10 @@ Crunch's token endpoint returns `404` when the request is malformed, for example
 
 The URL you pasted belongs to a different login attempt. Each attempt has its own `state`, and it's only known to the process that started it. Common causes: you pasted a URL from an earlier attempt, the server restarted between `crunch_auth_start` and `crunch_auth_complete`, or you started with `crunch-mcp login` and finished in the chat (or the other way round). Start again and use the newest URL.
 
+**`the login's state is missing …`**
+
+You pasted only the code, or a URL without `state=`. Copy the whole URL from the address bar instead: crunch-mcp only accepts a code together with the `state` of a login it started.
+
 **`crunch returned an error instead of a code: access_denied`**
 
 You clicked **Deny**, or Crunch refused the requested scopes. Try again, and check the scopes your API account is allowed.
@@ -124,7 +131,7 @@ Access tokens last about an hour. Remove `CRUNCH_ACCESS_TOKEN` and log in proper
 
 ## Permission errors (`403`)
 
-**`… failed (HTTP 403): … Crunch refused this request. The login may not include the create:all scope (…), or the endpoint isn't part of the public API.`**
+**`… failed (HTTP 403). Crunch's error message (quoted from the API): "…". Crunch refused this request. The login may not include the create:all scope (…), or the endpoint isn't part of the public API.`**
 
 Crunch understood the request but won't allow it. Two causes:
 
@@ -133,7 +140,7 @@ Crunch understood the request but won't allow it. Two causes:
 
 ## Errors when creating or changing records
 
-**`… failed (HTTP 500): … Crunch often returns 500 when a required field is missing or a value (VAT type, expense type, payment method) isn't valid; check them with the reference tools.`**
+**`… failed (HTTP 500). Crunch's error message (quoted from the API): "…". Crunch often returns 500 when a required field is missing or a value (VAT type, expense type, payment method) isn't valid; check them with the reference tools.`**
 
 Despite the status code, this is almost always a problem with the request rather than an outage. Check:
 
@@ -143,7 +150,7 @@ Despite the status code, this is almost always a problem with the request rather
 - The **supplier** or **client** exists (`crunch_list_suppliers`, `crunch_list_clients`).
 - A client's **billing address** has `line1`, `line2` and `country`.
 
-**`… failed (HTTP 400): …`** with field names
+**`… failed (HTTP 400). Crunch's error message (quoted from the API): "…"`** with field names
 
 Crunch rejected specific fields. The message lists each one and why.
 

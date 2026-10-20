@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -133,7 +134,7 @@ func serve() error {
 		}
 		return err
 	}
-	srv := &http.Server{Addr: httpserver.Addr(cfg.HTTP), Handler: httpserver.Handler(cfg.HTTP, server), ReadHeaderTimeout: 10 * time.Second}
+	srv := httpserver.NewServer(cfg.HTTP, httpserver.Handler(cfg.HTTP, server))
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -197,7 +198,7 @@ func login() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	res, err := client.Auth.CompleteLogin(ctx, redirected)
+	res, err := client.Auth.CompleteLogin(ctx, redirected, start.State)
 	if err != nil {
 		return err
 	}
@@ -256,16 +257,19 @@ func status() error {
 	return nil
 }
 
+// healthcheck asks the running server for /health. It reads the same settings as serve
+// (including _FILE variants), and connects to the listen address, or to loopback when
+// the server listens on every interface.
 func healthcheck() error {
-	if os.Getenv("MCP_TRANSPORT") == "stdio" {
+	cfg, err := config.Load(os.LookupEnv)
+	if err != nil {
+		return err
+	}
+	if cfg.Transport == "stdio" {
 		return nil
 	}
-	port := os.Getenv("MCP_HTTP_PORT")
-	if port == "" {
-		port = "8080"
-	}
 	c := &http.Client{Timeout: 3 * time.Second}
-	resp, err := c.Get("http://127.0.0.1:" + port + "/health")
+	resp, err := c.Get("http://" + net.JoinHostPort(healthHost(cfg.HTTP.Host), strconv.Itoa(cfg.HTTP.Port)) + "/health")
 	if err != nil {
 		return err
 	}
@@ -274,4 +278,14 @@ func healthcheck() error {
 		return fmt.Errorf("health check returned %s", resp.Status)
 	}
 	return nil
+}
+
+func healthHost(host string) string {
+	switch host {
+	case "", "0.0.0.0":
+		return "127.0.0.1"
+	case "::", "[::]":
+		return "::1"
+	}
+	return strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
 }
