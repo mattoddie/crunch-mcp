@@ -6,6 +6,8 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-22
+
 ### Added
 
 - crunch-mcp is published to the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/crunch-mcp) as `io.github.mattoddie/crunch-mcp`, with the Docker image (in stdio mode, with the token volume and the same settings as the extension bundle) and the extension bundles. Each stable release publishes its version from the release workflow. The image has the `io.modelcontextprotocol.server.name` label the registry checks. See [The MCP Registry](docs/releasing.md#the-mcp-registry).
@@ -106,7 +108,8 @@ First release. It hasn't yet been tested against a live Crunch account, so expec
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code.
 
-[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.1.0...v0.2.0
