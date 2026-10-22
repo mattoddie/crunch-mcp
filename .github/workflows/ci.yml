@@ -30,7 +30,7 @@ jobs:
         run: go test -race ./...
         env:
           CGO_ENABLED: "1"
-      - name: Check docs/tools.md and the bundle manifest are up to date
+      - name: Check docs/tools.md, the bundle manifest and server.json are up to date
         run: make docs-check
       - name: Check for known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
@@ -56,6 +56,14 @@ jobs:
             unzip -q "$f" -d "$dir"
             npx -y @anthropic-ai/mcpb@2.1.2 validate "$dir/manifest.json"
           done
+
+      # The same steps the release's registry job runs, minus the login and publish.
+      - name: Validate the MCP Registry entry
+        run: |
+          make mcp-publisher
+          make server-json VERSION=0.0.0-ci
+          .build/mcp-publisher/mcp-publisher validate server.json
+          .build/mcp-publisher/mcp-publisher validate dist/server.json
 
       - name: Smoke test (linux/amd64, over stdio)
         working-directory: .build/unpacked/crunch-mcp-0.0.0-ci-linux-amd64
@@ -112,6 +120,9 @@ jobs:
 
       - name: Smoke test
         run: |
+          # The MCP Registry checks this label to verify the image belongs to the server.
+          label=$(docker inspect --format '{{index .Config.Labels "io.modelcontextprotocol.server.name"}}' crunch-mcp:ci)
+          test "$label" = "$(jq -r .name server.json)"
           token=$(openssl rand -hex 32)
           docker run -d --name smoke -p 8080:8080 -e MCP_AUTH_TOKEN="$token" -e CRUNCH_CLIENT_ID=ci crunch-mcp:ci
           for i in $(seq 1 30); do curl -fsS http://localhost:8080/health && break; sleep 1; done

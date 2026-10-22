@@ -25,7 +25,8 @@ LABEL org.opencontainers.image.title="crunch-mcp" \
       org.opencontainers.image.description="MCP server for Crunch Accounting" \
       org.opencontainers.image.source="https://github.com/mattoddie/crunch-mcp" \
       org.opencontainers.image.documentation="https://crunch-mcp.mattoddie.dev/docs/" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      io.modelcontextprotocol.server.name="io.github.mattoddie/crunch-mcp"
 COPY --from=build /out/crunch-mcp /crunch-mcp
 # Tokens live here; mount a volume so logins survive restarts (refresh tokens rotate).
 COPY --from=build --chown=65532:65532 /out/data /data

@@ -6,6 +6,10 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+### Added
+
+- crunch-mcp is published to the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/crunch-mcp) as `io.github.mattoddie/crunch-mcp`, with the Docker image (in stdio mode, with the token volume and the same settings as the extension bundle) and the extension bundles. Each stable release publishes its version from the release workflow. The image has the `io.modelcontextprotocol.server.name` label the registry checks. See [The MCP Registry](docs/releasing.md#the-mcp-registry).
+
 ## [0.4.0] - 2026-10-22
 
 ### Added

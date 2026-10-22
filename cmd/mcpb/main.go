@@ -1,5 +1,6 @@
-// Command mcpb maintains the MCP Bundle manifest (mcpb/manifest.json) and packs
-// the bundles that let Claude Desktop install crunch-mcp in one click.
+// Command mcpb maintains the MCP Bundle manifest (mcpb/manifest.json), packs
+// the bundles that let Claude Desktop install crunch-mcp in one click, and keeps
+// the MCP Registry entry (server.json) in step with them.
 //
 //	go run ./cmd/mcpb manifest [-check]
 //	    Regenerate the manifest's tools and prompts from the server, started the
@@ -9,6 +10,14 @@
 //	go run ./cmd/mcpb pack -version 1.2.3 -goos darwin -binary path/to/crunch-mcp -o out.mcpb
 //	    Write a bundle for one platform: the manifest stamped with the version
 //	    and platform, the icon, the licence and the binary.
+//
+//	go run ./cmd/mcpb server-json -check
+//	    Check server.json (the MCP Registry entry) against the manifest's
+//	    environment variables and the Dockerfile's registry label.
+//
+//	go run ./cmd/mcpb server-json -version 1.2.3 -dist dist -o out.json
+//	    Write server.json for a release: the version, the image tag, and the
+//	    bundles' download URLs and SHA-256 hashes from dist.
 //
 // `make mcpb` builds the binaries and calls pack for every platform.
 package main
@@ -37,6 +46,8 @@ import (
 const usage = `Usage:
   mcpb manifest [-check] [-f mcpb/manifest.json]
   mcpb pack -version X.Y.Z -goos darwin|windows|linux -binary FILE -o OUT.mcpb [-dir mcpb] [-license LICENSE]
+  mcpb server-json -check [-f server.json] [-manifest mcpb/manifest.json] [-dockerfile Dockerfile]
+  mcpb server-json -version X.Y.Z -o OUT.json [-f server.json] [-dist dist]
 `
 
 func main() {
@@ -50,6 +61,8 @@ func main() {
 		err = manifestCmd(os.Args[2:])
 	case "pack":
 		err = packCmd(os.Args[2:])
+	case "server-json":
+		err = serverJSONCmd(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown command %q\n\n%s", os.Args[1], usage)
 	}

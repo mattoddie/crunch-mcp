@@ -1,6 +1,7 @@
 # Publishing a GitHub release (tag vX.Y.Z) builds the Docker image for
 # amd64 and arm64 and pushes it to ghcr.io/<owner>/crunch-mcp, then builds the
-# MCP Bundles for Claude Desktop and uploads them to the release.
+# MCP Bundles for Claude Desktop and uploads them to the release. Stable
+# releases are then published to the official MCP Registry.
 # See docs/releasing.md.
 name: Release
 
@@ -23,6 +24,9 @@ jobs:
       packages: write # push to ghcr.io
       id-token: write # sign the build provenance attestation
       attestations: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      stable: ${{ steps.version.outputs.stable }}
     env:
       IMAGE: ghcr.io/${{ github.repository }}
       TAG: ${{ github.event.release.tag_name }}
@@ -198,3 +202,66 @@ jobs:
             echo "| Linux | \`crunch-mcp-$version-linux-amd64.mcpb\`, \`crunch-mcp-$version-linux-arm64.mcpb\` |"
           } >> notes.md
           gh release edit "$TAG" --notes-file notes.md
+
+  registry:
+    name: Publish to the MCP Registry
+    # After both: the registry checks the image's label and that the bundles can be downloaded.
+    needs: [image, mcpb]
+    # Stable releases only. The registry treats every version as final and marks the
+    # newest as latest, so release candidates stay off it.
+    if: needs.image.outputs.stable == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read # download the bundles from the release
+      id-token: write # log in to the registry with GitHub OIDC
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+      VERSION: ${{ needs.image.outputs.version }}
+      SERVER: io.github.mattoddie/crunch-mcp
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Check whether this version is already published
+        id: published
+        run: |
+          # A version can only be published once, so a re-run after a successful publish skips it.
+          code=$(curl -sS -o /dev/null -w '%{http_code}' \
+            "https://registry.modelcontextprotocol.io/v0/servers/${SERVER//\//%2F}/versions/$VERSION")
+          case "$code" in
+            200) echo "already=true" >> "$GITHUB_OUTPUT"; echo "::notice::$SERVER $VERSION is already in the MCP Registry." ;;
+            404) echo "already=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::The MCP Registry returned HTTP $code."; exit 1 ;;
+          esac
+
+      - name: Stamp server.json
+        if: steps.published.outputs.already == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Hash the bundles as published, which is what clients download and check.
+          gh release download "$TAG" --pattern '*.mcpb' --dir dist
+          make server-json VERSION="$VERSION"
+          cat dist/server.json
+
+      - name: Install mcp-publisher
+        if: steps.published.outputs.already == 'false'
+        run: make mcp-publisher
+
+      - name: Publish
+        if: steps.published.outputs.already == 'false'
+        run: |
+          .build/mcp-publisher/mcp-publisher validate dist/server.json
+          .build/mcp-publisher/mcp-publisher login github-oidc
+          .build/mcp-publisher/mcp-publisher publish dist/server.json
+
+      - name: Summary
+        if: steps.published.outputs.already == 'false'
+        run: |
+          echo "### Published \`$SERVER\` $VERSION to the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=$SERVER)" >> "$GITHUB_STEP_SUMMARY"
