@@ -6,6 +6,8 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-22
+
 ### Added
 
 - An extension bundle (`.mcpb`) for one-click installation in Claude Desktop, for macOS, Windows and Linux on amd64 and arm64. Each release has the bundles attached, and their settings form covers the client ID and secret, the access switches, toolsets, a files folder and the audit log. Build them with `make mcpb VERSION=…`. See [Claude Desktop](docs/clients.md#claude-desktop).
@@ -100,7 +102,8 @@ First release. It hasn't yet been tested against a live Crunch account, so expec
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code.
 
-[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mattoddie/crunch-mcp/releases/tag/v0.1.0
