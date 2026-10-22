@@ -191,6 +191,8 @@ Then `export CRUNCH_MCP_TOKEN=<token>` before running `codex`.
 
 Any client that supports MCP **Streamable HTTP** works. Point it at `http://<docker-host>:8080/mcp` and send the bearer token header.
 
+Clients that install servers from the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/crunch-mcp) can find crunch-mcp there as `io.github.mattoddie/crunch-mcp`. The entry offers the Docker image in [stdio mode](#stdio-mode), with the `crunch-data` token volume and the same settings as the [extension bundle](#claude-desktop), and the bundles themselves.
+
 If your client only supports stdio, you have two options. You can use [stdio mode](#stdio-mode), or you can keep the shared HTTP server and connect through a stdio-to-HTTP bridge such as [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
 
 ```json

@@ -84,6 +84,8 @@ Now ask *"How's my business doing?"* in Claude Code.
 
 Using **Claude Desktop, VS Code, Cursor or Codex**? See [Connecting MCP clients](docs/clients.md). Prefer not to run a service? Use [stdio mode](docs/clients.md#stdio-mode) with `docker run -i` or the local binary.
 
+crunch-mcp is listed in the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/crunch-mcp) as `io.github.mattoddie/crunch-mcp`, so clients that install servers from the registry can set it up for you, with the Docker image in stdio mode or an extension bundle.
+
 ## Turning on changes
 
 Out of the box the assistant can look but not touch. To let it make changes, add these to `.env`:

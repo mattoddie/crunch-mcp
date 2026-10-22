@@ -1,0 +1,141 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.mattoddie/crunch-mcp",
+  "title": "Crunch Accounting (crunch-mcp)",
+  "description": "Work with your Crunch Accounting books: expenses, receipts, invoices, clients, suppliers and banking",
+  "repository": {
+    "url": "https://github.com/mattoddie/crunch-mcp",
+    "source": "github"
+  },
+  "websiteUrl": "https://crunch-mcp.mattoddie.dev",
+  "version": "0.0.0-dev",
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/mattoddie/crunch-mcp:0.0.0-dev",
+      "runtimeHint": "docker",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--volume",
+          "description": "Docker volume for the saved login. Keep it: Crunch refresh tokens rotate, so the login is lost without it.",
+          "isRequired": true,
+          "default": "crunch-data:/data"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "MCP_TRANSPORT",
+          "description": "Serve MCP over stdio. The image serves HTTP by default.",
+          "value": "stdio"
+        },
+        {
+          "name": "CRUNCH_CLIENT_ID",
+          "description": "The client ID Crunch gave you when it approved your API application.",
+          "isRequired": true
+        },
+        {
+          "name": "CRUNCH_CLIENT_SECRET",
+          "description": "Only for confidential clients, which Crunch issues a secret. Leave empty for a public client.",
+          "isSecret": true
+        },
+        {
+          "name": "CRUNCH_REDIRECT_URI",
+          "description": "Only if your API account has a redirect URI registered with Crunch. Empty means http://127.0.0.1:8976/callback."
+        },
+        {
+          "name": "CRUNCH_REFRESH_TOKEN",
+          "description": "Optional refresh token to start from instead of logging in. Don't use it anywhere else afterwards.",
+          "isSecret": true
+        },
+        {
+          "name": "CRUNCH_ALLOW_WRITES",
+          "description": "Allow creating and changing records, including issuing invoices. Off means read-only.",
+          "format": "boolean",
+          "default": "false"
+        },
+        {
+          "name": "CRUNCH_ALLOW_DELETES",
+          "description": "Also allow deleting records and removing payments. Needs CRUNCH_ALLOW_WRITES.",
+          "format": "boolean",
+          "default": "false"
+        },
+        {
+          "name": "CRUNCH_ALLOW_EMAIL",
+          "description": "Also allow emailing invoices and turning on payment reminders. Needs CRUNCH_ALLOW_WRITES.",
+          "format": "boolean",
+          "default": "false"
+        },
+        {
+          "name": "CRUNCH_TOOLSETS",
+          "description": "Optional comma-separated toolsets to expose fewer tools, e.g. account,reference,expenses. Empty means all."
+        },
+        {
+          "name": "CRUNCH_FILES_DIR",
+          "description": "Optional folder, inside the container, for receipts to attach and files to save. Mount it too. Empty turns it off."
+        },
+        {
+          "name": "CRUNCH_AUDIT_LOG",
+          "description": "Optional audit log of every change: stderr, or a file path inside the container. Empty turns it off."
+        }
+      ]
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/crunch-mcp/releases/download/v0.0.0-dev/crunch-mcp-0.0.0-dev-darwin-arm64.mcpb",
+      "version": "0.0.0-dev",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/crunch-mcp/releases/download/v0.0.0-dev/crunch-mcp-0.0.0-dev-darwin-amd64.mcpb",
+      "version": "0.0.0-dev",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/crunch-mcp/releases/download/v0.0.0-dev/crunch-mcp-0.0.0-dev-windows-amd64.mcpb",
+      "version": "0.0.0-dev",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/crunch-mcp/releases/download/v0.0.0-dev/crunch-mcp-0.0.0-dev-windows-arm64.mcpb",
+      "version": "0.0.0-dev",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/crunch-mcp/releases/download/v0.0.0-dev/crunch-mcp-0.0.0-dev-linux-amd64.mcpb",
+      "version": "0.0.0-dev",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/mattoddie/crunch-mcp/releases/download/v0.0.0-dev/crunch-mcp-0.0.0-dev-linux-arm64.mcpb",
+      "version": "0.0.0-dev",
+      "fileSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
