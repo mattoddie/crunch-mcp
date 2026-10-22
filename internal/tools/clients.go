@@ -7,9 +7,8 @@ import (
 )
 
 type listClientsArgs struct {
-	Search string `json:"search,omitempty" jsonschema:"Case-insensitive substring filter on name, email and postcode"`
-	Limit  *int   `json:"limit,omitempty" jsonschema:"Maximum number of results"`
-	Raw    bool   `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
+	ListArgs
+	Raw bool `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
 }
 
 type clientIDArgs struct {
@@ -74,13 +73,10 @@ func registerClients(c *Context) {
 		}
 		items := crunch.Objs(res)
 		crunch.SortBy(items, "name")
-		out := filterAndLimit(items, a.Search, a.Limit, func(o Obj) []string {
-			return []string{crunch.Str(o, "name"), crunch.Str(o, "email"), crunch.Str(o, "billingAddress", "postCode"), crunch.Str(o, "id")}
-		})
 		if !a.Raw {
-			out["items"] = mapItems(out["items"].([]Obj), crunch.SummarizeCustomer)
+			items = mapItems(items, crunch.SummarizeCustomer)
 		}
-		return out, nil
+		return a.result(items), nil
 	})
 
 	add(c, Def{

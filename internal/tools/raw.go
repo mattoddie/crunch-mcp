@@ -21,8 +21,6 @@ type rawRequestArgs struct {
 }
 
 var (
-	// POSTs that only read data.
-	readOnlyPostRe = regexp.MustCompile(`^/banking/(bank-accounts|credit-cards)/opening-balances$`)
 	// Anything that might send an email: invoice emails and payment reminders.
 	emailPathRe = regexp.MustCompile(`email|remind`)
 	// Records whose payments and attachments an update replaces.
@@ -75,7 +73,8 @@ func registerRaw(c *Context) {
 		Toolset: "raw", Name: "crunch_api_request", Title: "Raw Crunch API request",
 		Description: desc,
 		ReadOnly:    boolPtr(!c.AllowWrites), Destructive: boolPtr(c.AllowWrites),
-		Enums: map[string][]string{"method": {"GET", "POST", "PUT", "DELETE"}},
+		Enums:  map[string][]string{"method": {"GET", "POST", "PUT", "DELETE"}},
+		Writes: c.AllowWrites, Reads: rawReads,
 	}, func(ctx context.Context, a rawRequestArgs) (any, error) {
 		method := strings.ToUpper(a.Method)
 		if method == "" {
@@ -87,7 +86,7 @@ func registerRaw(c *Context) {
 		}
 		switch {
 		case method == "GET":
-		case method == "POST" && readOnlyPostRe.MatchString(canon):
+		case method == "POST" && crunch.IsReadOnlyPost(canon):
 		case !c.AllowWrites:
 			return nil, errors.New("write access is disabled. Set CRUNCH_ALLOW_WRITES=true to allow non-GET requests")
 		case method == "DELETE" && !c.AllowDeletes:
@@ -120,7 +119,7 @@ func registerRaw(c *Context) {
 
 // checkRawBody applies the email and delete switches to a raw POST or PUT body.
 func (c *Context) checkRawBody(ctx context.Context, method, p, canon string, body any) error {
-	if method == http.MethodPost && readOnlyPostRe.MatchString(canon) {
+	if method == http.MethodPost && crunch.IsReadOnlyPost(canon) {
 		return nil
 	}
 	var current Obj
@@ -249,4 +248,19 @@ func sendFlagOn(v any) string {
 		}
 	}
 	return ""
+}
+
+// rawReads reports whether a raw request only reads (a GET, or a POST that only reads),
+// so it is left out of the audit log.
+func rawReads(args map[string]any) bool {
+	method, _ := args["method"].(string)
+	switch strings.ToUpper(method) {
+	case "", http.MethodGet:
+		return true
+	case http.MethodPost:
+		p, _ := args["path"].(string)
+		_, canon, err := cleanRawPath(p)
+		return err == nil && crunch.IsReadOnlyPost(canon)
+	}
+	return false
 }

@@ -137,7 +137,29 @@ The server includes six prompts. Each one is a ready-made, multi-step request th
 
 ## Making changes
 
-With `CRUNCH_ALLOW_WRITES=true` the assistant can change your books. The server tells the model to confirm amounts, dates and VAT treatment with you before creating or changing records, and before issuing an invoice. Good clients also ask before running tools marked *destructive*. It's still a good habit to ask for a plan first: *"What would you record? Don't do it yet."*
+With `CRUNCH_ALLOW_WRITES=true` the assistant can change your books. The server tells the model to confirm amounts, dates and VAT treatment with you before creating or changing records, and before issuing an invoice. Good clients also ask before running tools marked *destructive*. It's still a good habit to ask for a plan first: *"What would you record? Don't do it yet."*, or for a [dry run](#previewing-changes-with-dry_run).
+
+### Previewing changes with `dry_run`
+
+Every tool that changes something takes `dry_run: true`. The tool checks its input, reads what it needs from Crunch (such as the current record and the default VAT types) and builds the request, but doesn't send it. Instead it returns what it would have sent:
+
+- For a **create**, the method, path and body, with any file contents shortened.
+- For an **update**, the method, path and the fields that would change, from and to, such as `postingDate` or `expenseLineItems[0].amount.grossAmount`.
+- For a **delete** or an action such as issuing an invoice, the method and path.
+
+```json
+{
+  "dry_run": true,
+  "would_send": {"method": "PUT", "path": "/expenses/77"},
+  "changes": {
+    "changed": {"postingDate": {"from": "2026-09-14", "to": "2026-09-15"}},
+    "added": {"note": "Paid by card"}
+  },
+  "note": "Nothing was changed: this was a dry run. …"
+}
+```
+
+The access switches and checks still apply, so a dry run of something that isn't allowed fails just as the real call would. A tool that makes several changes in a row (such as creating a supplier on the way to creating an expense) previews only the first. Ask for one with *"show me a dry run first"*. With `CRUNCH_AUDIT_LOG` set, dry runs and real changes are recorded in an [audit log](configuration.md#audit-log).
 
 ### Looking up valid values
 
@@ -185,6 +207,7 @@ Files can be up to 10 MB each, and an invoice can have up to five. Crunch needs 
 
 - **Compact by default.** List tools return trimmed summaries with the useful fields: names, dates, amounts, status and outstanding balances. Get tools return the full record.
 - **Paging.** Expenses, invoices, recurring expenses and bank account payments are paged by Crunch. List tools fetch one page of 50 by default (`page`, `size` up to 200 and `sort` change that). `all: true` fetches every page, up to `max_items` (default 1000, at most 10,000), and says when it stopped early.
+- **Narrowing.** Every list tool except `crunch_list_vat_types` returns `{total, returned, items}` and takes `search` (a case-insensitive match on any value in an item), `fields` (keep only these fields, with dot paths such as `supplier.companyName` for the nested fields of `raw: true` objects) and `limit`. On paged lists they apply to what was fetched: one page, or every page with `all: true`. With `search`, `total` counts the matches and `searched` says how many items were looked at.
 - **Filters** like `start_date`, `end_date`, `supplier_id`, `client_id`, `has_attachment` and `status` keep responses small. Totals tools (`crunch_get_expenses_total`, `crunch_get_invoice_totals`) answer *"how much"* without listing anything.
 - **`raw: true`** on many list and get tools returns Crunch's full objects when you need a field the summary leaves out.
 - **IDs, not numbers.** Tools take Crunch's internal invoice ID, not the invoice number printed on it. The assistant finds the ID with `crunch_list_invoices` first.

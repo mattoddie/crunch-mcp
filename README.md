@@ -40,11 +40,15 @@ Ask about your business in plain English. The assistant picks from **70 tools** 
 - **🔑 Least-privilege login.** It logs in with Crunch's own OAuth 2.0 flow (with PKCE) and asks only for the scopes your settings need. Tokens never appear in tool output.
 - **🔄 Stays logged in.** Crunch rotates refresh tokens, and reusing an old one revokes your login. crunch-mcp saves each new token before using it and never refreshes twice at once, so it keeps working across restarts.
 - **✏️ Careful updates.** Changing an expense or invoice fetches the current record and changes only what you asked, so payments and attachments are never dropped by accident.
+- **🔍 Preview and audit.** Every tool that changes something takes `dry_run: true` to show the request it would send, with a field-by-field diff for updates, without changing anything. `CRUNCH_AUDIT_LOG` records each change in a JSON Lines audit log.
+- **🖥️ One-click Claude Desktop install.** Each release has an extension bundle (`.mcpb`) for macOS, Windows and Linux, with a settings form and no Docker needed.
 - **📎 Receipts and PDFs.** Attach receipts and timesheets, download receipts as images the assistant can read, and fetch invoice PDFs.
-- **🎛️ Tunable.** Expose only the toolsets you need, which keeps the model's context small and focused.
+- **🎛️ Tunable.** Expose only the toolsets you need, which keeps the model's context small and focused. List tools take `search`, `fields` and `limit` to fetch only what's needed.
 - **🧪 Tested.** The test suite runs against a mock Crunch API and OAuth server on every build.
 
 ## Quick start
+
+**Using Claude Desktop?** Download the extension bundle for your computer from the [latest release](https://github.com/mattoddie/crunch-mcp/releases/latest), open it, enter your Crunch client ID and ask Claude to *"log in to Crunch"*. See [Claude Desktop](docs/clients.md#claude-desktop). The steps below set up the Docker server for every other client.
 
 You need Docker, a Crunch account, Crunch API access and an MCP client such as [Claude Code](https://claude.com/claude-code).
 
@@ -89,6 +93,7 @@ CRUNCH_ALLOW_WRITES=true    # create and update expenses, invoices, clients, sup
 CRUNCH_ALLOW_DELETES=true   # also allow deleting records and removing payments (needs writes)
 CRUNCH_ALLOW_EMAIL=true     # also allow emailing invoices and payment reminders to customers (needs writes)
 CRUNCH_TOOLSETS=account,reference,expenses,invoices,clients,suppliers   # optional: expose fewer tools
+CRUNCH_AUDIT_LOG=stderr     # optional: log every change (or an absolute file path; see docs/configuration.md)
 ```
 
 The login needs matching scopes, so **log in again** after turning on writes or deletes:
@@ -98,6 +103,8 @@ docker compose stop
 docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login
 docker compose up -d
 ```
+
+Ask for a dry run first when it matters: *"Record that receipt, but show me a dry run first."*
 
 Read [Security](docs/security.md) before turning on writes for your real books.
 

@@ -28,11 +28,28 @@ type PageArgs struct {
 // maxPagedItems caps max_items, so one call can't page through an unbounded number of results.
 const maxPagedItems = 10000
 
-// fetchPaged fetches one page, or every page with All, and maps the items.
-func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Query, a PageArgs, defaultSort string, mapFn func(Obj) Obj) (Obj, error) {
-	if mapFn == nil {
-		mapFn = func(o Obj) Obj { return o }
+// fetchPaged fetches one page, or every page with All, maps the items and narrows
+// them with the list arguments. Without search, total is Crunch's count of every
+// match; with search, it counts the matches among the items fetched (searched).
+func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Query, a PageArgs, l ListArgs, defaultSort string, mapFn func(Obj) Obj) (Obj, error) {
+	res, items, err := fetchPages(ctx, c, path, q, a, defaultSort)
+	if err != nil {
+		return nil, err
 	}
+	if mapFn != nil {
+		items = mapItems(items, mapFn)
+	}
+	if l.Search != "" {
+		res["searched"] = len(items)
+		items = l.filter(items)
+		res["total"] = len(items)
+	}
+	return l.project(res, l.limit(items)), nil
+}
+
+// fetchPages fetches one page, or every page with All, and returns the paging
+// details ({page, total, pages, next_page} or {total, truncated, note}) and the items.
+func fetchPages(ctx context.Context, c *crunch.Client, path string, q crunch.Query, a PageArgs, defaultSort string) (Obj, []Obj, error) {
 	if q == nil {
 		q = crunch.Query{}
 	}
@@ -41,13 +58,6 @@ func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 		sort = defaultSort
 	}
 	q["sort"] = sort
-	mapAll := func(items []Obj) []Obj {
-		out := make([]Obj, len(items))
-		for i, it := range items {
-			out[i] = mapFn(it)
-		}
-		return out
-	}
 	page := 0
 	if a.Page != nil {
 		page = max(*a.Page, 0)
@@ -60,12 +70,14 @@ func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 		q["page"], q["size"] = page, size
 		var res Obj
 		if err := c.Get(ctx, path, q, &res); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		items := crunch.List(res, "content")
-		out := Obj{"page": page, "returned": len(items), "items": mapAll(items)}
+		out := Obj{"page": page}
 		if n := crunch.ID(res, "totalElements"); n != nil {
 			out["total"] = n
+		} else {
+			out["total"] = len(items)
 		}
 		if n := crunch.ID(res, "totalPages"); n != nil {
 			out["pages"] = n
@@ -73,7 +85,7 @@ func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 		if last, ok := res["last"].(bool); ok && !last {
 			out["next_page"] = page + 1
 		}
-		return out, nil
+		return out, items, nil
 	}
 	maxItems := 1000
 	if a.MaxItems != nil && *a.MaxItems > 0 {
@@ -86,7 +98,7 @@ func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 		q["page"], q["size"] = page, 200
 		var res Obj
 		if err := c.Get(ctx, path, q, &res); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		content := crunch.List(res, "content")
 		items = append(items, content...)
@@ -108,34 +120,7 @@ func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 	if len(items) > maxItems {
 		items = items[:maxItems]
 	}
-	out["returned"] = len(items)
-	out["items"] = mapAll(items)
-	return out, nil
-}
-
-// filterAndLimit applies a case-insensitive substring search over some fields, then a limit.
-func filterAndLimit(items []Obj, search string, limit *int, fields func(Obj) []string) Obj {
-	out := items
-	if search != "" {
-		q := strings.ToLower(search)
-		out = nil
-		for _, it := range items {
-			for _, f := range fields(it) {
-				if f != "" && strings.Contains(strings.ToLower(f), q) {
-					out = append(out, it)
-					break
-				}
-			}
-		}
-	}
-	total := len(out)
-	if limit != nil && *limit >= 0 && *limit < len(out) {
-		out = out[:*limit]
-	}
-	if out == nil {
-		out = []Obj{}
-	}
-	return Obj{"total": total, "returned": len(out), "items": out}
+	return out, items, nil
 }
 
 func mapItems(items []Obj, f func(Obj) Obj) []Obj {

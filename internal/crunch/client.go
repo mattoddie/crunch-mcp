@@ -161,6 +161,9 @@ func (c *Client) Do(ctx context.Context, method, path string, q Query, body, out
 	if err != nil {
 		return fmt.Errorf("%s %s: reading the response: %w", method, path, err)
 	}
+	if call := CallFrom(ctx); call != nil && method == http.MethodGet {
+		call.remember(cleanPath(path), data)
+	}
 	if out == nil || len(bytes.TrimSpace(data)) == 0 {
 		return nil
 	}
@@ -197,9 +200,28 @@ func (c *Client) GetFile(ctx context.Context, path string, q Query) (*File, erro
 	return f, nil
 }
 
-func (c *Client) send(ctx context.Context, method, path string, q Query, body any, accept string) (*http.Response, error) {
+func cleanPath(path string) string {
 	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
+		return "/" + path
+	}
+	return path
+}
+
+func (c *Client) send(ctx context.Context, method, path string, q Query, body any, accept string) (resp *http.Response, err error) {
+	path = cleanPath(path)
+	if call := CallFrom(ctx); call != nil && changes(method, path) {
+		if call.DryRun() {
+			return nil, call.intercept(method, path, q, body)
+		}
+		defer func() {
+			status := 0
+			if resp != nil {
+				status = resp.StatusCode
+			} else if e, ok := err.(*Error); ok {
+				status = e.Status
+			}
+			call.recordSent(method, path, status)
+		}()
 	}
 	u := c.cfg.APIURL + path
 	if qs := q.Encode(); qs != "" {

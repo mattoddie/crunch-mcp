@@ -6,9 +6,11 @@ crunch-mcp is configured entirely through environment variables. With Docker Com
 - [How login works](#how-login-works)
 - [What the assistant may do](#what-the-assistant-may-do)
 - [Turning on writes](#turning-on-writes)
+- [Audit log](#audit-log)
 - [MCP transport](#mcp-transport)
 - [Docker secrets (`_FILE` variables)](#docker-secrets-_file-variables)
 - [Choosing toolsets](#choosing-toolsets)
+- [Keeping the tool list small](#keeping-the-tool-list-small)
 - [Example configurations](#example-configurations)
 
 The server checks the configuration at startup. If something is wrong, it exits with a clear message such as `CRUNCH_ALLOW_DELETES=true also requires CRUNCH_ALLOW_WRITES=true`. If the container keeps restarting, check `docker compose logs`. The server starts without a login, though: tools then explain how to log in.
@@ -101,6 +103,8 @@ Don't use the same refresh token anywhere else afterwards. Its first use by crun
 
 Boolean variables accept `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. Anything else stops the server with an error.
 
+A variable set to an empty value counts as unset and gets its default. So does one set to exactly `${user_config.<key>}`, which is how Claude Desktop passes an [extension setting](clients.md#claude-desktop) that was left empty.
+
 That gives four access levels. The [tool reference](tools.md) labels every tool with the level it needs:
 
 | Label | Registered when |
@@ -128,6 +132,44 @@ Tools that aren't allowed are **not registered at all**. The assistant can't see
 3. Reconnect or restart your MCP client so it fetches the new tool list.
 
 `CRUNCH_ALLOW_EMAIL` doesn't need a new scope of its own, but it does need writes, so the same steps apply if writes were off before.
+
+## Audit log
+
+| Variable | Default | Description |
+|---|---|---|
+| `CRUNCH_AUDIT_LOG` | (off) | Record every call of a tool that changes things. An absolute file path appends JSON Lines to that file, which is created with mode `0600` if it doesn't exist. `stderr` writes the lines to standard error, next to the server's other logs. |
+
+Each line is one call of a write, delete or email tool, or of `crunch_api_request` with a method that changes something. Dry runs, calls that failed and calls refused for invalid arguments are all logged. Read-only tools aren't:
+
+```json
+{"arguments":{"client_id":4,"email":"sam@example.com"},"dry_run":false,"outcome":"ok","requests":[{"method":"PUT","path":"/clients/4","status":200}],"time":"2026-10-22T09:14:03.120Z","tool":"crunch_update_client"}
+```
+
+| Field | Meaning |
+|---|---|
+| `time` | When the call finished, in UTC (RFC 3339). |
+| `tool` | The tool name, such as `crunch_update_client`. |
+| `dry_run` | Whether the call was a [dry run](usage.md#previewing-changes-with-dry_run). |
+| `arguments` | The arguments. Anything named like a token, secret or password is `[redacted]`, and file contents and other long values are shortened, so the log doesn't hold copies of receipts. |
+| `requests` | The requests that change something that were actually sent to Crunch: method, path and HTTP status (left out if no response arrived). Reads aren't listed, and nothing from the responses is logged. |
+| `previewed` | For a dry run, the request that was previewed and not sent. |
+| `outcome` | `ok` or `error`. |
+| `error` | The error message, when `outcome` is `error`. |
+
+The server checks at startup that it can write to the file, and refuses to start if the directory doesn't exist or isn't writable. A write that fails later doesn't stop the tool call: the server logs one warning to standard error and carries on. The file is opened for each entry, so it can be rotated by moving it away; the next entry creates a new one.
+
+In Docker, mount a writable directory for it:
+
+```yaml
+services:
+  crunch-mcp:
+    environment:
+      CRUNCH_AUDIT_LOG: /audit/crunch-mcp.jsonl
+    volumes:
+      - ./audit:/audit
+```
+
+Create the directory first and let UID 65532 write to it, for example `mkdir audit && sudo chown 65532 audit`. `CRUNCH_AUDIT_LOG=stderr` needs no volume: the lines appear in `docker compose logs`.
 
 ## MCP transport
 
@@ -199,6 +241,44 @@ The [tool reference](tools.md) lists the tools in each toolset. A read-only setu
 | Recording receipts and bills | `account,reference,expenses,suppliers,banking` |
 | Invoicing and credit control | `account,reference,invoices,clients,banking` |
 | Everything (default) | `all` |
+
+## Keeping the tool list small
+
+Most MCP clients send every tool's name, description and argument schema to the model with each request. With every toolset enabled that's about 31 KB for the 36 read-only tools, 71 KB for 60 tools with writes on, and 79 KB for all 70 tools with deletes and email on too. That uses up context you'd rather spend on your conversation and your accounts, so enable only the toolsets you need: the model sees fewer tools, picks the right one more easily, and can't reach the rest at all.
+
+Measured with `tools/list` over stdio (sizes are the JSON response, rounded to the nearest KB):
+
+| `CRUNCH_TOOLSETS` | Read-only | With writes | With deletes and email |
+|---|---|---|---|
+| `all` | 36 tools, 31 KB | 60 tools, 71 KB | 70 tools, 79 KB |
+| `account,banking,expenses,invoices,clients,suppliers` (overview and reporting) | 27 tools, 23 KB | 49 tools, 57 KB | 58 tools, 63 KB |
+| `account,reference,expenses,suppliers,banking` (receipts and bills) | 24 tools, 20 KB | 39 tools, 41 KB | 44 tools, 45 KB |
+| `account,reference,invoices,clients,banking` (invoicing) | 27 tools, 21 KB | 43 tools, 42 KB | 49 tools, 47 KB |
+
+Each toolset on its own:
+
+| Toolset | Read-only | Everything allowed |
+|---|---|---|
+| `account` | 6 tools, 3 KB | 6 tools, 3 KB |
+| `reference` | 6 tools, 5 KB | 6 tools, 5 KB |
+| `banking` | 6 tools, 5 KB | 17 tools, 15 KB |
+| `clients` | 2 tools, 1 KB | 5 tools, 5 KB |
+| `suppliers` | 2 tools, 1 KB | 5 tools, 5 KB |
+| `expenses` | 4 tools, 6 KB | 10 tools, 17 KB |
+| `recurring` | 2 tools, 2 KB | 5 tools, 9 KB |
+| `invoices` | 7 tools, 6 KB | 15 tools, 18 KB |
+| `raw` | 1 tool, 1 KB | 1 tool, 1 KB |
+
+Clients with their own tool search, such as Claude Code, load tool definitions only when the model needs them, so they handle the full list fine. You don't need to narrow `CRUNCH_TOOLSETS` for them, though it still limits what the model can reach.
+
+To measure a setup yourself:
+
+```sh
+{ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"m","version":"0"}}}'
+  echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+  echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+  sleep 2; } | MCP_TRANSPORT=stdio CRUNCH_TOOLSETS=all crunch-mcp | grep '"id":2' | wc -c
+```
 
 ## Example configurations
 

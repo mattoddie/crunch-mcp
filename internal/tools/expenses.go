@@ -162,6 +162,7 @@ func (f listExpensesFilters) query() crunch.Query {
 type listExpensesArgs struct {
 	listExpensesFilters
 	PageArgs
+	ListArgs
 	Raw bool `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
 }
 
@@ -290,7 +291,7 @@ func registerExpenses(c *Context) {
 		if !a.Raw {
 			mapFn = crunch.SummarizeExpense
 		}
-		return fetchPaged(ctx, cl, "/expenses", a.query(), a.PageArgs, "postingDate,desc", mapFn)
+		return fetchPaged(ctx, cl, "/expenses", a.query(), a.PageArgs, a.ListArgs, "postingDate,desc", mapFn)
 	})
 
 	add(c, Def{

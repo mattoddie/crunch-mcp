@@ -1,0 +1,325 @@
+{
+  "manifest_version": "0.3",
+  "name": "crunch-mcp",
+  "display_name": "Crunch Accounting (crunch-mcp)",
+  "version": "0.0.0-dev",
+  "description": "Work with your Crunch Accounting books: expenses and receipts, invoices, clients, suppliers and bank accounts.",
+  "long_description": "An open-source MCP server for **Crunch Accounting**, the UK online accountancy service for freelancers, contractors and small limited companies. Ask about your business in plain English: cash in the bank, overdue invoices, unpaid bills and missing receipts. If you allow it, Claude can also record expenses, raise invoices and log payments.\n\n- **Read-only by default.** Changes need *Allow changes*; deleting records and emailing customers each need their own switch as well. Tools that change things can preview the request with a dry run first.\n- **Your own API access.** You need a Crunch public API client ID (from Crunch's developer programme). After installing, ask Claude to *log in to Crunch* and follow the link.\n- **Audit log.** Optionally record every change Claude makes, or previews, in a file.\n\ncrunch-mcp is an independent community project, not affiliated with or endorsed by Crunch Accounting.",
+  "author": {
+    "name": "Matt Oddie",
+    "url": "https://github.com/mattoddie"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattoddie/crunch-mcp"
+  },
+  "homepage": "https://crunch-mcp.mattoddie.dev",
+  "documentation": "https://crunch-mcp.mattoddie.dev/docs/clients/#claude-desktop",
+  "support": "https://github.com/mattoddie/crunch-mcp/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "binary",
+    "entry_point": "server/crunch-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/server/crunch-mcp",
+      "args": [],
+      "env": {
+        "MCP_TRANSPORT": "stdio",
+        "CRUNCH_CLIENT_ID": "${user_config.client_id}",
+        "CRUNCH_CLIENT_SECRET": "${user_config.client_secret}",
+        "CRUNCH_REDIRECT_URI": "${user_config.redirect_uri}",
+        "CRUNCH_REFRESH_TOKEN": "${user_config.refresh_token}",
+        "CRUNCH_ALLOW_WRITES": "${user_config.allow_writes}",
+        "CRUNCH_ALLOW_DELETES": "${user_config.allow_deletes}",
+        "CRUNCH_ALLOW_EMAIL": "${user_config.allow_email}",
+        "CRUNCH_TOOLSETS": "${user_config.toolsets}",
+        "CRUNCH_FILES_DIR": "${user_config.files_dir}",
+        "CRUNCH_AUDIT_LOG": "${user_config.audit_log}"
+      },
+      "platform_overrides": {
+        "win32": {
+          "command": "${__dirname}/server/crunch-mcp.exe"
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "crunch_api_request",
+      "description": "Call any Crunch public API endpoint directly, for anything the other tools don't cover. `path` is relative to the API root and starts with the service: /banking, /clients, /company-details, /expenses, /immutable-data, /invoices or /user-details. Only GET is allowed because write access is disabled (CRUNCH_ALLOW_WRITES=false). Emailing invoices and turning on payment reminders are blocked (CRUNCH_ALLOW_EMAIL=false), including query parameters and body flags that might send email."
+    },
+    {
+      "name": "crunch_auth_complete",
+      "description": "Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned."
+    },
+    {
+      "name": "crunch_auth_start",
+      "description": "Start logging this server in to a Crunch account (OAuth 2.0 with PKCE). Returns a URL for the user to open and approve. After they click Allow, the browser is sent to the redirect URI; if nothing is listening there the page fails to load, which is fine: ask the user to copy the full URL from the address bar and pass it to crunch_auth_complete. Logging in replaces the current tokens, possibly with a different Crunch account."
+    },
+    {
+      "name": "crunch_auth_status",
+      "description": "Show whether this server is logged in to Crunch: where the tokens come from, the granted scopes, when the access token expires and whether a refresh token is available. Never shows the tokens themselves."
+    },
+    {
+      "name": "crunch_download_expense_attachment",
+      "description": "Download a receipt or other file attached to an expense. Images are returned so you can read them; other files (PDFs) come back as an embedded resource. Attachment IDs and names come from crunch_get_expense."
+    },
+    {
+      "name": "crunch_download_invoice_attachment",
+      "description": "Download a file attached to a sales invoice. Attachment IDs and names come from crunch_get_invoice."
+    },
+    {
+      "name": "crunch_download_invoice_pdf",
+      "description": "Download a sales invoice as a PDF, as Crunch renders it for the customer. Returned as an embedded resource; use save_to to also write it to disk (when the server sets CRUNCH_FILES_DIR)."
+    },
+    {
+      "name": "crunch_get_bank_account",
+      "description": "Get one bank account in full: balance, account details, bank feed, unmatched statement entries and whether it can be edited, archived or deleted."
+    },
+    {
+      "name": "crunch_get_client",
+      "description": "Get a client (customer) in full: contact details, billing address, payment terms and note."
+    },
+    {
+      "name": "crunch_get_company_details",
+      "description": "Get the business's details from Crunch: company name and number, VAT registration number, current VAT scheme (for example flat rate, with industry and limited cost trader status), and business and registered addresses."
+    },
+    {
+      "name": "crunch_get_credit_card",
+      "description": "Get one credit card in full, including its opening balance."
+    },
+    {
+      "name": "crunch_get_default_invoice_note",
+      "description": "Get the default note Crunch prints on new sales invoices (often payment instructions)."
+    },
+    {
+      "name": "crunch_get_expense",
+      "description": "Get one expense: its lines (types, VAT, amounts), payments, attachments, credit notes, and whether it can still be edited or deleted. raw=true returns the API object."
+    },
+    {
+      "name": "crunch_get_expenses_total",
+      "description": "Total the expenses matching the filters (gross amount, plus under- and over-paid amounts) without listing them. Handy for \"how much did I spend on travel this year?\"."
+    },
+    {
+      "name": "crunch_get_invoice",
+      "description": "Get one sales invoice: customer, dates, lines, VAT, payments received, credit notes, attachments and status. raw=true returns the API object."
+    },
+    {
+      "name": "crunch_get_invoice_status",
+      "description": "Get an invoice's current state (status, number, amounts, outstanding balance, due date), which is lighter than crunch_get_invoice."
+    },
+    {
+      "name": "crunch_get_invoice_totals",
+      "description": "Get sales invoice totals: with no filters, everything invoiced and still outstanding; with filters (client, status, issue or due dates, invoice number, recurring), the amount invoiced, owed to you and owed by you for the matching invoices."
+    },
+    {
+      "name": "crunch_get_opening_balances",
+      "description": "Get the opening balances of bank accounts or credit cards, and whether each can still be edited."
+    },
+    {
+      "name": "crunch_get_overview",
+      "description": "A one-call snapshot of the business: company and VAT details, bank account and credit card balances, sales invoice totals (invoiced and outstanding) and open accounting periods. A good first call for questions like \"how is my business doing?\"."
+    },
+    {
+      "name": "crunch_get_recurring_expense",
+      "description": "Get a recurring expense in full: the template expense (supplier, lines, payment) and its schedule (recurringEvent)."
+    },
+    {
+      "name": "crunch_get_supplier",
+      "description": "Get a supplier in full."
+    },
+    {
+      "name": "crunch_get_user_details",
+      "description": "Get the logged-in Crunch user: ID, email address, first and last name."
+    },
+    {
+      "name": "crunch_list_accounting_periods",
+      "description": "List the open accounting periods (financial years) with their start and end dates and status. Expenses can only be created or changed in an open period; closed years can't be edited."
+    },
+    {
+      "name": "crunch_list_bank_account_payments",
+      "description": "List payments recorded in Crunch against a bank account (supplier payments, customer payments, transfers, salaries, dividends, tax payments...), either reconciled with the bank statement or still unreconciled. Paged; newest first by default."
+    },
+    {
+      "name": "crunch_list_bank_accounts",
+      "description": "List the business's bank accounts with their current balance, sort code and account number, default flag, bank feed state and how many statement entries still need matching. Use the IDs when recording payments."
+    },
+    {
+      "name": "crunch_list_clients",
+      "description": "List the business's clients (the customers you invoice) with email, payment terms and billing address. Use the IDs as the customer on invoices."
+    },
+    {
+      "name": "crunch_list_countries",
+      "description": "List the countries Crunch knows, with the country codes to use in addresses and supplier records, and whether each is an EU member."
+    },
+    {
+      "name": "crunch_list_credit_cards",
+      "description": "List the business's credit cards with their balances, default flag and unmatched statement entries."
+    },
+    {
+      "name": "crunch_list_expense_types",
+      "description": "List the expense types (categories) Crunch accepts in expenseType fields, for example ACCOUNTANCY, TELEPHONE or TRAVEL_AND_SUBSISTENCE, grouped as in Crunch, with each type's default VAT type. Use the `name` values when creating expenses and suppliers."
+    },
+    {
+      "name": "crunch_list_expenses",
+      "description": "List expenses (purchases, receipts and bills), newest first, filtered by supplier, expense type, date, payment date, payment method or whether a receipt is attached. Each result shows supplier, amounts, status, outstanding balance and payment method. Paged (up to 200 per page); use all=true to fetch every page."
+    },
+    {
+      "name": "crunch_list_invoices",
+      "description": "List sales invoices, newest first: number, customer, dates, status, amounts and outstanding balance. Filter by client, or by status (which fetches every page and filters here). Paged (up to 200 per page); use all=true to fetch every page."
+    },
+    {
+      "name": "crunch_list_payment_methods",
+      "description": "List payment methods (for example EFT, CASH, DIRECTORS_EXPENSES) for recording expense payments or invoice payments. Use `name` as the payment method."
+    },
+    {
+      "name": "crunch_list_persons",
+      "description": "List the people (directors and employees) linked to the business on a date. Use their IDs as the person for DIRECTORS_EXPENSES payments and as the employee on expense lines."
+    },
+    {
+      "name": "crunch_list_recurring_expenses",
+      "description": "List recurring expenses (regular bills such as rent, phone or software subscriptions that Crunch creates automatically) with supplier, amount, status and next date."
+    },
+    {
+      "name": "crunch_list_suppliers",
+      "description": "List suppliers (who you buy from), with their default expense type, country and VAT number. `name` asks Crunch for an exact company name. Use the IDs when creating expenses."
+    },
+    {
+      "name": "crunch_list_vat_types",
+      "description": "List the VAT types (rates) Crunch accepts, with their percentages. Expenses and invoices have separate lists; use the names exactly as shown (for example \"Standard\", \"Exempt\", \"Outside the Scope\"), not code-style values."
+    }
+  ],
+  "tools_generated": true,
+  "prompts": [
+    {
+      "name": "business_health_check",
+      "description": "A plain-English review of the business: cash in the bank, money owed to and by you, overdue invoices, unpaid bills and anything that needs attention.",
+      "arguments": [],
+      "text": "Give me a health check of my business from Crunch.\n1. crunch_get_overview: company, bank and card balances, invoice totals, open accounting periods.\n2. crunch_list_invoices (all: true): unpaid and overdue invoices (due date before today with an outstanding balance), grouped by customer, oldest first.\n3. crunch_list_expenses for the last 90 days (start_date): unpaid or part-paid bills, and expenses without a receipt (has_attachment: false).\n4. crunch_list_bank_accounts: accounts with many unmatched statement entries (reconciliation backlog).\nReport: a one-line verdict, then cash position, money owed to me (with overdue detail), money I owe, and a short to-do list ordered by importance. Use GBP and keep healthy areas to one line. Don't change anything."
+    },
+    {
+      "name": "chase_overdue_invoices",
+      "description": "Find overdue sales invoices and draft polite chasing emails for each customer.",
+      "arguments": [
+        "days_overdue"
+      ],
+      "text": "Find my overdue sales invoices in Crunch and help me chase them.\n1. crunch_list_invoices (all: true) and keep invoices with an outstanding balance whose due date is at least 1 day(s) before today.\n2. Group them by customer; use crunch_get_client for each customer's email address.\n3. For each customer, draft a short, polite chasing email listing invoice numbers, dates, amounts outstanding and days overdue, with a friendlier tone for first reminders and firmer for anything over 60 days.\nShow me the drafts. Don't send anything or change any records unless I ask; if I ask you to send, use crunch_email_invoice only after I confirm the recipients and message."
+    },
+    {
+      "name": "record_receipt",
+      "description": "Turn a receipt, bill or description of a purchase into a correctly categorised Crunch expense.",
+      "arguments": [
+        "details"
+      ],
+      "text": "Record this purchase as an expense in Crunch: ${arguments.details}\n1. Work out the supplier, date, gross amount, VAT and what it was for. If anything important is missing or ambiguous, ask me.\n2. Find the supplier with crunch_list_suppliers (search); if it doesn't exist, plan to create it.\n3. Choose the expense type with crunch_list_expense_types and the VAT type with crunch_list_vat_types (for=expenses). Explain your choice briefly, especially for anything that might not be allowable or might be a personal cost.\n4. If it's been paid, pick the payment method (crunch_list_payment_methods) and the bank account or card (crunch_list_bank_accounts, crunch_list_credit_cards); for a director's own money use DIRECTORS_EXPENSES with crunch_list_persons.\n5. Check the date is in an open period (crunch_list_accounting_periods).\n6. Show me a summary of the expense you'll create and wait for my go-ahead, then use crunch_create_expense (attaching the receipt if I gave one)."
+    },
+    {
+      "name": "expense_review",
+      "description": "Review a period's expenses for missing receipts, unpaid bills, odd categories and possible duplicates.",
+      "arguments": [
+        "start_date",
+        "end_date"
+      ],
+      "text": "Review my Crunch expenses from three months ago to today.\n1. crunch_list_expenses (all: true) for the period.\n2. Look for: expenses without a receipt, unpaid or part-paid bills, possible duplicates (same supplier and amount within a few days), unusual expense types for the supplier, VAT that looks wrong (for example VAT on an Exempt or overseas supplier), and large or one-off items.\n3. Total spending by expense type and by supplier (top 10).\nReport findings as a prioritised list with the expense IDs, then the totals. Don't change anything."
+    },
+    {
+      "name": "create_invoice",
+      "description": "Raise a sales invoice for a client, checking the client, VAT rate, payment terms and bank account.",
+      "arguments": [
+        "client",
+        "work"
+      ],
+      "text": "Create a sales invoice in Crunch for ${arguments.client} for: ${arguments.work}\n1. Find the client with crunch_list_clients (search). If there's no match, ask me for their details and create them with crunch_create_client.\n2. Check my company's VAT status with crunch_get_company_details and pick the VAT rate from crunch_list_vat_types (for=invoices).\n3. Pick the bank account to be paid into (crunch_list_bank_accounts; usually the default) and the client's payment terms.\n4. Show me the draft lines, VAT, total and due date, and wait for my go-ahead before crunch_create_invoice.\n5. Ask whether to issue it (crunch_issue_invoice is final) and, if email is enabled, whether to email it."
+    },
+    {
+      "name": "period_summary",
+      "description": "Income, spending and cash summary for a month, quarter or year, for example to prepare for a VAT return or year end.",
+      "arguments": [
+        "start_date",
+        "end_date"
+      ],
+      "text": "Summarise my business in Crunch from ${arguments.start_date} to ${arguments.end_date}.\n1. Sales: crunch_get_invoice_totals with issued_from_date/issued_to_date, and crunch_list_invoices (all: true) for the invoices issued in the period: net, VAT and gross by customer.\n2. Spending: crunch_list_expenses (all: true, start_date/end_date): net, VAT and gross by expense type and top suppliers.\n3. Cash: crunch_list_bank_accounts for current balances.\n4. If the company is VAT registered (crunch_get_company_details), estimate output VAT on sales and input VAT on purchases for the period, and note the VAT scheme (flat rate schemes work differently). Make clear this is an estimate, not the VAT return.\nPresent it as a short report with tables. Don't change anything."
+    }
+  ],
+  "keywords": [
+    "crunch",
+    "accounting",
+    "bookkeeping",
+    "invoices",
+    "expenses",
+    "uk",
+    "freelancer"
+  ],
+  "license": "MIT",
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ]
+  },
+  "user_config": {
+    "client_id": {
+      "type": "string",
+      "title": "Client ID",
+      "description": "The client ID Crunch gave you when it approved your API application.",
+      "required": true
+    },
+    "client_secret": {
+      "type": "string",
+      "title": "Client secret",
+      "description": "Only for confidential clients, which Crunch issues a secret. Leave empty for a public client.",
+      "sensitive": true,
+      "default": ""
+    },
+    "redirect_uri": {
+      "type": "string",
+      "title": "Redirect URI",
+      "description": "Only if your API account has a redirect URI registered with Crunch: it must match exactly. Empty means http://127.0.0.1:8976/callback.",
+      "default": ""
+    },
+    "refresh_token": {
+      "type": "string",
+      "title": "Refresh token",
+      "description": "Optional: a refresh token to start from instead of logging in. Don't use it anywhere else afterwards. Otherwise leave empty and ask Claude to log in to Crunch.",
+      "sensitive": true,
+      "default": ""
+    },
+    "allow_writes": {
+      "type": "boolean",
+      "title": "Allow changes",
+      "description": "Let Claude create and change records: expenses, payments, receipts, invoices (including issuing them), clients, suppliers and bank accounts. Off means read-only. Log in again after turning it on.",
+      "default": false
+    },
+    "allow_deletes": {
+      "type": "boolean",
+      "title": "Allow deletes",
+      "description": "Also let Claude delete records and remove payments. Needs Allow changes.",
+      "default": false
+    },
+    "allow_email": {
+      "type": "boolean",
+      "title": "Allow emailing customers",
+      "description": "Also let Claude email invoices to customers from Crunch and turn on payment reminders. Needs Allow changes.",
+      "default": false
+    },
+    "toolsets": {
+      "type": "string",
+      "title": "Toolsets",
+      "description": "Optional comma-separated list to expose fewer tools, e.g. account,reference,expenses,suppliers,banking. Empty means all.",
+      "default": ""
+    },
+    "files_dir": {
+      "type": "directory",
+      "title": "Files folder",
+      "description": "Optional folder Claude may read receipts from and save downloaded invoices and attachments to. Leave empty to turn local files off.",
+      "default": ""
+    },
+    "audit_log": {
+      "type": "string",
+      "title": "Audit log file",
+      "description": "Optional full path to a file, e.g. /Users/you/crunch-mcp-audit.jsonl, where every change Claude makes or previews is appended as a JSON line. The file is created if it doesn't exist; its folder must exist. stderr writes the lines to Claude Desktop's MCP log instead. Off when left empty.",
+      "default": ""
+    }
+  }
+}

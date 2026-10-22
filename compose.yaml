@@ -20,6 +20,9 @@ services:
       # For attachments by file_path and downloads with save_to, mount a folder
       # and set CRUNCH_FILES_DIR=/files in .env:
       # - ./files:/files
+      # For an audit log file, mount a writable folder (owned by UID 65532) and set
+      # CRUNCH_AUDIT_LOG=/audit/crunch-mcp.jsonl in .env (or use CRUNCH_AUDIT_LOG=stderr):
+      # - ./audit:/audit
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

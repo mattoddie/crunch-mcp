@@ -39,6 +39,9 @@ type Context struct {
 	config.Tools
 	// Registered records each registered tool's toolset and gate, for the docs generator.
 	Registered map[string]Info
+	// guarded holds the tools that change things: they take dry_run and are audited.
+	guarded map[string]guard
+	audit   *auditLog
 }
 
 // Info describes a registered tool.
@@ -63,6 +66,12 @@ type Def struct {
 	OpenWorld bool
 	// Enums restricts string arguments to fixed values, keyed by argument name.
 	Enums map[string][]string
+	// Writes marks a Read-gated tool that can still change things (the raw request tool
+	// with writes enabled), so it gets dry_run and the audit log like Write tools.
+	Writes bool
+	// Reads, for a tool that changes things, reports whether a call's arguments only
+	// read; such calls are left out of the audit log.
+	Reads func(args map[string]any) bool
 }
 
 // Money is an amount given as a number (120) or a decimal string ("120.00"). It is sent to Crunch as a JSON number.
@@ -196,9 +205,21 @@ func add[In any](c *Context, d Def, h func(ctx context.Context, in In) (any, err
 			ann.DestructiveHint = d.Destructive
 		}
 	}
-	tool := &mcp.Tool{Name: d.Name, Title: d.Title, Description: d.Description, Annotations: ann, InputSchema: schemaFor[In](d)}
+	schema := schemaFor[In](d)
+	guarded := d.Gate != Read || d.Writes
+	if guarded {
+		addDryRunArg(schema)
+		if c.guarded == nil {
+			c.guarded = map[string]guard{}
+		}
+		c.guarded[d.Name] = guard{reads: d.Reads}
+	}
+	tool := &mcp.Tool{Name: d.Name, Title: d.Title, Description: d.Description, Annotations: ann, InputSchema: schema}
 	mcp.AddTool(c.Server, tool, func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, any, error) {
 		out, err := h(ctx, in)
+		if guarded {
+			out, err = dryRunResult(ctx, out, err)
+		}
 		if err != nil {
 			return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: "Error: " + err.Error()}}, IsError: true}, nil, nil
 		}

@@ -125,3 +125,12 @@ func registerPrompts(s *mcp.Server) {
 			})
 	}
 }
+
+// PromptNames lists the prompts in the order they are registered.
+func PromptNames() []string {
+	names := make([]string, len(prompts))
+	for i, p := range prompts {
+		names[i] = p.name
+	}
+	return names
+}

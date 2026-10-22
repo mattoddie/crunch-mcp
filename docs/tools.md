@@ -113,7 +113,11 @@ Lookups for the values Crunch expects: expense types, VAT types, payment methods
 
 List the open accounting periods (financial years) with their start and end dates and status. Expenses can only be created or changed in an open period; closed years can't be edited.
 
-_No arguments._
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
+| `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_list_countries
 
@@ -123,7 +127,9 @@ List the countries Crunch knows, with the country codes to use in addresses and 
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `search` | string |  | Case-insensitive substring filter |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
+| `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_list_expense_types
 
@@ -134,9 +140,11 @@ List the expense types (categories) Crunch accepts in expenseType fields, for ex
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `date` | string |  | Types valid on this date (YYYY-MM-DD; default today) |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `include_deprecated` | boolean |  | Include deprecated types (default false) |
+| `limit` | integer |  | Maximum number of items |
 | `raw` | boolean |  | Return the API response unchanged |
-| `search` | string |  | Case-insensitive substring filter on names and groups |
+| `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_list_payment_methods
 
@@ -147,7 +155,10 @@ List payment methods (for example EFT, CASH, DIRECTORS_EXPENSES) for recording e
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `direction` | string |  | For invoices: the payment direction as Crunch names it (default INCOMING, money received from customers) |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `for` | `"expenses"` \| `"invoices"` |  | Expense payments (default) or invoice (customer) payments |
+| `limit` | integer |  | Maximum number of items |
+| `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_list_persons
 
@@ -158,7 +169,10 @@ List the people (directors and employees) linked to the business on a date. Use 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `date` | string |  | Date the people were in post (YYYY-MM-DD; default today) |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
 | `role` | string |  | Only people with this role, as Crunch names it (for example DIRECTOR) |
+| `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_list_vat_types
 
@@ -204,6 +218,7 @@ Archive a bank account you no longer use (it stays in your records but is hidden
 |---|---|---|---|
 | `bank_account_id` | integer | yes | Bank account ID (see crunch_list_bank_accounts) |
 | `archive` | boolean |  | true to archive (default), false to restore |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_archive_credit_card
 
@@ -215,6 +230,7 @@ Archive a credit card you no longer use, or restore an archived one with archive
 |---|---|---|---|
 | `credit_card_id` | integer | yes | Credit card ID (see crunch_list_credit_cards) |
 | `archive` | boolean |  | true to archive (default), false to restore |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_create_bank_account
 
@@ -229,6 +245,7 @@ Add a bank account to Crunch so payments can be recorded against it.
 | `account_name` | string |  | Name on the account |
 | `account_number` | string |  | Account number |
 | `bic` | string |  | BIC |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `extra` | object |  | Additional raw fields for the request body, using Crunch's own field names (advanced). Merged last. |
 | `iban` | string |  | IBAN |
 | `personal` | boolean |  | A personal (not business) account used for business payments |
@@ -244,6 +261,7 @@ Add a credit card to Crunch so expenses can be paid from it. Set its opening bal
 |---|---|---|---|
 | `display_name` | string | yes | Name shown in Crunch, for example Amex Business |
 | `card_number` | string |  | Card number (Crunch usually only needs the last four digits) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `extra` | object |  | Additional raw fields for the request body, using Crunch's own field names (advanced). Merged last. |
 | `personal` | boolean |  | A personal card used for business payments |
 
@@ -256,6 +274,7 @@ Permanently delete a bank account. Only possible when nothing is recorded agains
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `bank_account_id` | integer | yes | Bank account ID (see crunch_list_bank_accounts) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_delete_credit_card
 
@@ -266,6 +285,7 @@ Permanently delete a credit card. Only possible when nothing is recorded against
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `credit_card_id` | integer | yes | Credit card ID (see crunch_list_credit_cards) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_get_bank_account
 
@@ -309,9 +329,12 @@ List payments recorded in Crunch against a bank account (supplier payments, cust
 | `bank_account_id` | integer | yes | Bank account ID (see crunch_list_bank_accounts) |
 | `reconciled` | boolean | yes | true for payments matched to bank statement entries, false for those still waiting to be reconciled |
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
 | `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
+| `search` | string |  | Case-insensitive substring match on any value |
 | `size` | integer |  | Results per page, up to 200 (default 50) |
 | `sort` | string |  | Sort order as field,asc or field,desc, for example postingDate,desc |
 
@@ -323,8 +346,10 @@ List the business's bank accounts with their current balance, sort code and acco
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
-| `search` | string |  | Case-insensitive substring filter on names and numbers |
+| `search` | string |  | Case-insensitive substring match on any value |
 | `status` | `"active"` \| `"archived"` \| `"all"` |  | Which to list: active (default), archived or all |
 
 ### crunch_list_credit_cards
@@ -335,8 +360,10 @@ List the business's credit cards with their balances, default flag and unmatched
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
-| `search` | string |  | Case-insensitive substring filter on names and numbers |
+| `search` | string |  | Case-insensitive substring match on any value |
 | `status` | `"active"` \| `"archived"` \| `"all"` |  | Which to list: active (default), archived or all |
 
 ### crunch_set_credit_card_opening_balance
@@ -349,6 +376,7 @@ Set a credit card's opening balance (the amount owed when you started using Crun
 |---|---|---|---|
 | `credit_card_id` | integer | yes | Credit card ID (see crunch_list_credit_cards) |
 | `opening_balance` | number \| string | yes | Opening balance, for example 250.00 |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_set_default_bank_account
 
@@ -359,6 +387,7 @@ Make a bank account the default one, used for new invoices and payments.
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `bank_account_id` | integer | yes | Bank account ID (see crunch_list_bank_accounts) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_set_default_credit_card
 
@@ -369,6 +398,7 @@ Make a credit card the default one.
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `credit_card_id` | integer | yes | Credit card ID (see crunch_list_credit_cards) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_update_bank_account
 
@@ -384,6 +414,7 @@ Change a bank account's details. Only the fields you pass change; the rest are k
 | `bank_name` | string |  | Bank, for example Starling |
 | `bic` | string |  | BIC |
 | `display_name` | string |  | Name shown in Crunch, for example Business Current Account |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `extra` | object |  | Additional raw fields for the request body, using Crunch's own field names (advanced). Merged last. |
 | `iban` | string |  | IBAN |
 | `personal` | boolean |  | A personal (not business) account used for business payments |
@@ -400,6 +431,7 @@ Change a credit card's details. Only the fields you pass change.
 | `credit_card_id` | integer | yes | Credit card ID (see crunch_list_credit_cards) |
 | `card_number` | string |  | Card number (Crunch usually only needs the last four digits) |
 | `display_name` | string |  | Name shown in Crunch, for example Amex Business |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `extra` | object |  | Additional raw fields for the request body, using Crunch's own field names (advanced). Merged last. |
 | `personal` | boolean |  | A personal card used for business payments |
 
@@ -431,6 +463,7 @@ Create a client (customer) to invoice. A name and a billing address with line1, 
 | `billing_address.line4` | string |  | Fourth line |
 | `billing_address.post_code` | string |  | Postcode |
 | `name` | string | yes | Customer name, for example Example Customer Ltd |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `email` | string |  | Email address invoices are sent to |
 | `extra` | object |  | Additional raw fields for the request body, using Crunch's own field names (advanced). Merged last. |
 | `note` | string |  | Internal note about the customer |
@@ -445,6 +478,7 @@ Delete a client (customer). Crunch refuses if the client has invoices.
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `client_id` | integer | yes | Client (customer) ID (see crunch_list_clients) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_get_client
 
@@ -464,9 +498,10 @@ List the business's clients (the customers you invoice) with email, payment term
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `limit` | integer |  | Maximum number of results |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
-| `search` | string |  | Case-insensitive substring filter on name, email and postcode |
+| `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_update_client
 
@@ -484,6 +519,7 @@ Change a client's details. Only the fields you pass change; the rest are kept (a
 | `billing_address.line3` | string |  | Third line |
 | `billing_address.line4` | string |  | Fourth line |
 | `billing_address.post_code` | string |  | Postcode |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `email` | string |  | Email address invoices are sent to |
 | `extra` | object |  | Additional raw fields for the request body, using Crunch's own field names (advanced). Merged last. |
 | `name` | string |  | New name |
@@ -513,6 +549,7 @@ Create a supplier. Only company_name is required; a default expense_type makes n
 | `company_name` | string | yes | Supplier name, for example Example Supplier Ltd |
 | `contact_name` | string |  | Contact at the supplier |
 | `country` | string |  | Country code, for example GB (see crunch_list_countries) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `expense_type` | string |  | Default expense type for this supplier's expenses, for example TELEPHONE (see crunch_list_expense_types) |
 | `extra` | object |  | Additional raw fields for the request body, using Crunch's own field names (advanced). Merged last. |
 | `vat_registration_number` | string |  | The supplier's VAT number |
@@ -526,6 +563,7 @@ Delete a supplier. Only possible when it has no expenses (see `deletable`); arch
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `supplier_id` | integer | yes | Supplier ID (see crunch_list_suppliers) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_get_supplier
 
@@ -541,15 +579,16 @@ Get a supplier in full.
 
 🟢 read
 
-List suppliers (who you buy from), with their default expense type, country and VAT number. `search` matches part of a name; `name` asks Crunch for an exact company name. Use the IDs when creating expenses.
+List suppliers (who you buy from), with their default expense type, country and VAT number. `name` asks Crunch for an exact company name. Use the IDs when creating expenses.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `include_archived` | boolean |  | Include archived suppliers (default false) |
-| `limit` | integer |  | Maximum number of results |
+| `limit` | integer |  | Maximum number of items |
 | `name` | string |  | Exact company name to look up |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
-| `search` | string |  | Case-insensitive substring filter on name, contact and VAT number |
+| `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_update_supplier
 
@@ -564,6 +603,7 @@ Change a supplier's details, or archive/restore it. Only the fields you pass cha
 | `company_name` | string |  | New name |
 | `contact_name` | string |  | Contact at the supplier |
 | `country` | string |  | Country code, for example GB (see crunch_list_countries) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `expense_type` | string |  | Default expense type for this supplier's expenses, for example TELEPHONE (see crunch_list_expense_types) |
 | `extra` | object |  | Additional raw fields for the request body, using Crunch's own field names (advanced). Merged last. |
 | `vat_registration_number` | string |  | The supplier's VAT number |
@@ -599,6 +639,7 @@ Attach one or more files (receipts, invoices) to an existing expense. Existing a
 | `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_add_expense_payment
 
@@ -613,6 +654,7 @@ Record that an expense was paid (fully or partly): date, amount, payment method 
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
 | `bank_account_id` | integer |  | Bank account the payment went through (see crunch_list_bank_accounts) |
 | `credit_card_id` | integer |  | Credit card the payment was made with (see crunch_list_credit_cards) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `payment_method` | string |  | Payment method name, for example EFT, CASH or DIRECTORS_EXPENSES (default EFT; see crunch_list_payment_methods) |
 | `person_id` | integer |  | For DIRECTORS_EXPENSES: the director who paid (see crunch_list_persons) |
 
@@ -639,6 +681,7 @@ Record an expense: who it was from, the date, one or more lines (expense type, V
 | `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
 | `create_supplier` | boolean |  | With supplier_name: create the supplier if it doesn't exist yet (default false) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `extra` | object |  | Additional raw ExpenseDto fields, using Crunch's own field names (advanced). Merged last. |
 | `note` | string |  | Internal note |
 | `payments` | object[] |  | How it was paid; leave out to record it as unpaid |
@@ -661,6 +704,7 @@ Permanently delete an expense with its lines, payments and attachments. Not poss
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_download_expense_attachment
 
@@ -715,13 +759,16 @@ List expenses (purchases, receipts and bills), newest first, filtered by supplie
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
 | `end_date` | string |  | Expenses dated on or before (YYYY-MM-DD) |
 | `expense_type` | string |  | Only this expense type, for example TRAVEL_AND_SUBSISTENCE |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `has_attachment` | boolean |  | Only expenses with (true) or without (false) a receipt attached |
+| `limit` | integer |  | Maximum number of items |
 | `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `payment_end_date` | string |  | Paid on or before (YYYY-MM-DD) |
 | `payment_method` | string |  | Only expenses paid this way, for example EFT |
 | `payment_start_date` | string |  | Paid on or after (YYYY-MM-DD) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
+| `search` | string |  | Case-insensitive substring match on any value |
 | `size` | integer |  | Results per page, up to 200 (default 50) |
 | `sort` | string |  | Sort order as field,asc or field,desc, for example postingDate,desc |
 | `start_date` | string |  | Expenses dated on or after (YYYY-MM-DD) |
@@ -737,6 +784,7 @@ Remove a payment from an expense (or all of its payments with all=true), leaving
 |---|---|---|---|
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
 | `all` | boolean |  | Remove every payment of the expense instead of one; payment_id must then be left out |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `payment_id` | integer |  | Payment to remove (see crunch_get_expense). Required unless all is true |
 
 ### crunch_update_expense
@@ -749,6 +797,7 @@ Change an expense. The current expense is fetched and only what you pass changes
 |---|---|---|---|
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
 | `changes` | object |  | Raw ExpenseDto fields to merge into the current expense (advanced) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `line_items` | object[] |  | Replacement lines (all existing lines are replaced) |
 | `line_items[].expense_type` | string | yes | Expense type name, for example ACCOUNTANCY or TELEPHONE (see crunch_list_expense_types) |
 | `line_items[].gross_amount` | number \| string | yes | Total including VAT, for example 120.00 |
@@ -801,6 +850,7 @@ Set up a recurring expense: a template expense (supplier, lines, optional paymen
 | `recurrence.occurrence_count` | integer |  | Number of expenses to create, when it ends after a count |
 | `bank_account_id` | integer |  | Bank account the payments come from |
 | `create_supplier` | boolean |  | With supplier_name: create the supplier if it doesn't exist yet (default false) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `extra` | object |  | Additional raw ExpenseDto fields, using Crunch's own field names (advanced). Merged last. |
 | `note` | string |  | Internal note |
 | `payment_method` | string |  | Payment method for the created expenses, for example EFT |
@@ -818,6 +868,7 @@ Delete a recurring expense so no more expenses are created from it. Expenses it 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `recurring_expense_id` | integer | yes | Recurring expense ID (see crunch_list_recurring_expenses) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_get_recurring_expense
 
@@ -838,9 +889,12 @@ List recurring expenses (regular bills such as rent, phone or software subscript
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
 | `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
+| `search` | string |  | Case-insensitive substring match on any value |
 | `size` | integer |  | Results per page, up to 200 (default 50) |
 | `sort` | string |  | Sort order as field,asc or field,desc, for example postingDate,desc |
 
@@ -854,6 +908,7 @@ Change a recurring expense: its lines, its schedule (for example pause it with e
 |---|---|---|---|
 | `recurring_expense_id` | integer | yes | Recurring expense ID (see crunch_list_recurring_expenses) |
 | `changes` | object |  | Raw ExpenseDto fields to merge in, for example {"recurringEvent": {"recurringEventFrequency": "..."}} (advanced) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `enabled` | boolean |  | Pause (false) or resume (true) the schedule |
 | `end_date` | string |  | New end date (YYYY-MM-DD) |
 | `line_items` | object[] |  | Replacement lines (all existing lines are replaced) |
@@ -904,6 +959,7 @@ Attach files (for example timesheets) to a sales invoice. Existing attachments a
 | `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_add_invoice_payment
 
@@ -917,6 +973,7 @@ Record a payment received from a customer against an issued invoice (full or par
 | `date` | string | yes | Date the customer paid (YYYY-MM-DD) |
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices) |
 | `bank_account_id` | integer |  | Bank account the money went into (defaults to the invoice's bank account) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `payment_method` | string |  | Payment method name (default EFT; see crunch_list_payment_methods for=invoices) |
 
 ### crunch_create_invoice
@@ -941,6 +998,7 @@ Create a draft sales invoice for a client: date, lines (description, unit price 
 | `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
 | `bank_account_id` | integer |  | Bank account the customer should pay into, shown on the invoice (see crunch_list_bank_accounts) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `due_date` | string |  | Due date (YYYY-MM-DD); worked out from the payment terms when omitted |
 | `extra` | object |  | Additional raw SalesInvoiceDto fields, using Crunch's own field names (advanced). Merged last. |
 | `line_item_type` | `"SIMPLE"` \| `"DETAILED"` |  | SIMPLE (default) or DETAILED lines |
@@ -959,6 +1017,7 @@ Delete a sales invoice. Usually only drafts can be deleted (see `deletable` in c
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices); not the invoice number |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_download_invoice_attachment
 
@@ -993,6 +1052,7 @@ Email an issued sales invoice (as a PDF) to the customer from Crunch. This sends
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `email_addresses` | string[] |  | Recipients (default: the customer's email address) |
 | `include_attachments` | boolean |  | Also send the invoice's attachments (default false) |
 | `message` | string |  | Email message |
@@ -1053,6 +1113,7 @@ Issue a draft sales invoice: it gets its invoice number and is posted to your ac
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices); not the invoice number |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_list_invoices
 
@@ -1064,9 +1125,12 @@ List sales invoices, newest first: number, customer, dates, status, amounts and 
 |---|---|---|---|
 | `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
 | `client_id` | integer |  | Only this client's invoices (see crunch_list_clients) |
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `limit` | integer |  | Maximum number of items |
 | `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
+| `search` | string |  | Case-insensitive substring match on any value |
 | `size` | integer |  | Results per page, up to 200 (default 50) |
 | `sort` | string |  | Sort order as field,asc or field,desc, for example postingDate,desc |
 | `status` | string |  | Only invoices with this status, as shown in the status field (for example DRAFT); fetches all pages and filters them here |
@@ -1081,6 +1145,7 @@ Remove a recorded customer payment from an invoice (for example one entered by m
 |---|---|---|---|
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices) |
 | `payment_id` | integer | yes | Payment to remove (see crunch_get_invoice) |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 
 ### crunch_update_invoice
 
@@ -1094,6 +1159,7 @@ Change a sales invoice. The current invoice is fetched and only what you pass ch
 | `bank_account_id` | integer |  | Bank account shown on the invoice |
 | `changes` | object |  | Raw SalesInvoiceDto fields to merge into the current invoice (advanced) |
 | `client_id` | integer |  | Move the invoice to this customer |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `due_date` | string |  | New due date (YYYY-MM-DD) |
 | `issued_date` | string |  | New invoice date (YYYY-MM-DD) |
 | `items` | object[] |  | Replacement lines (all existing lines are replaced) |
@@ -1126,6 +1192,7 @@ Call any Crunch public API endpoint directly, for anything the other tools don't
 |---|---|---|---|
 | `path` | string | yes | Path relative to https://public-api.crunch.co.uk/v1, starting with the service, for example /expenses/vat-types |
 | `body` | any |  | JSON request body for POST and PUT |
+| `dry_run` | boolean |  | Preview: return the request that would be sent (for an update, the fields that would change) without sending it |
 | `method` | `"GET"` \| `"POST"` \| `"PUT"` \| `"DELETE"` |  | HTTP method: GET (default), POST, PUT or DELETE |
 | `query` | object |  | Query string parameters |
 
