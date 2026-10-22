@@ -406,6 +406,7 @@ const connectSnippet = `claude mcp add --transport http crunch \\
               <li><strong>Read-only out of the box.</strong> Writes, deletes and emailing your customers are three separate switches.</li>
               <li><strong>Least-privilege OAuth scopes.</strong> Login asks Crunch only for what your settings need, so a read-only setup gets a read-only token.</li>
               <li><strong>Destructive tools are labelled,</strong> so your client asks before running them.</li>
+              <li><strong>Preview before changing.</strong> Tools that change things take <code>dry_run</code>, and an optional audit log records every change.</li>
               <li><strong>Bearer-token auth</strong>, a Host allow-list and a read-only, non-root container.</li>
             </ul>
             <a class="link" href="/docs/security/">Read the security model →</a>
@@ -478,7 +479,9 @@ const connectSnippet = `claude mcp add --transport http crunch \\
           <ul class="chips">{clients.map((c) => <li>{c}</li>)}</ul>
           <p class="muted">
             Run it once and share it, or start it per session with <code>docker run -i</code>. You can even log in from the chat with
-            the auth tools. <a href="/docs/clients/">Client setup →</a>
+            the auth tools.
+            On Claude Desktop, install the one-click bundle from the <a href={`${GITHUB}/releases/latest`}>latest release</a>.
+            <a href="/docs/clients/">Client setup →</a>
           </p>
         </div>
       </section>
