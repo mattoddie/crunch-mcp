@@ -197,7 +197,7 @@ func TestReferenceTools(t *testing.T) {
 		t.Error("invoice payment methods need a direction")
 	}
 	env.mock.On("GET", "/expenses/persons", crunchtest.JSON([]any{Obj{"id": 8, "forename": "Sam", "surname": "Smith"}}))
-	people := env.call("crunch_list_persons", nil).([]any)
+	people := env.obj("crunch_list_persons", nil)["items"].([]any)
 	if people[0].(Obj)["name"] != "Sam Smith" || env.mock.Last("GET").Query.Get("date") == "" {
 		t.Errorf("persons: %v", people)
 	}

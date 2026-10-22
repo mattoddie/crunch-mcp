@@ -1,6 +1,6 @@
 # Releasing
 
-Releases are driven by **GitHub releases**. Publishing a release with a tag like `v1.2.3` triggers the [Release workflow](../.github/workflows/release.yml). That workflow builds the Docker image for `linux/amd64` and `linux/arm64` and pushes it to `ghcr.io/mattoddie/crunch-mcp`. Nothing is published by merging to `main` alone.
+Releases are driven by **GitHub releases**. Publishing a release with a tag like `v1.2.3` triggers the [Release workflow](../.github/workflows/release.yml). That workflow builds the Docker image for `linux/amd64` and `linux/arm64` and pushes it to `ghcr.io/mattoddie/crunch-mcp`, then builds the Claude Desktop extension bundles (`.mcpb`) and attaches them to the release. Nothing is published by merging to `main` alone.
 
 - [Versioning](#versioning)
 - [Release checklist](#release-checklist)
@@ -37,8 +37,9 @@ The version comes **from the tag**. There's no version file in the repository: b
 
    Or in the web UI: **Releases → Draft a new release → Choose a tag → type `v1.2.0` → Create new tag on publish**, target `main`. Click **Generate release notes**, edit them as needed, then **Publish release**.
 
-4. **Watch the workflow.** Open **Actions → Release**. It takes a few minutes. When it finishes, the release notes gain a *Container image* section with the pull command, digest and tags.
+4. **Watch the workflow.** Open **Actions → Release**. It takes a few minutes. When it finishes, the release notes gain a *Container image* section with the pull command, digest and tags, and a *Claude Desktop* section listing the six `.mcpb` bundles attached to the release.
 5. **Check the image:** `docker pull ghcr.io/mattoddie/crunch-mcp:1.2.0`, then `docker run --rm ghcr.io/mattoddie/crunch-mcp:1.2.0 version`.
+6. **Check a bundle:** download the one for your computer from the release and install it in Claude Desktop (**Settings → Extensions**), or unzip it and check the manifest with `npx @anthropic-ai/mcpb@2.1.2 validate manifest.json`.
 
 Release notes are generated from merged PR titles and grouped by label. The groups are set in [`.github/release.yml`](../.github/release.yml). Label PRs `breaking`, `enhancement`, `new-tool`, `bug`, `compatibility`, `documentation` or `dependencies` to sort them, or `skip-changelog` to leave a PR out.
 
@@ -62,6 +63,7 @@ Pre-releases are published only under their exact version (`ghcr.io/mattoddie/cr
 | Push | To `ghcr.io/mattoddie/crunch-mcp` using the workflow's `GITHUB_TOKEN`. No personal tokens are needed. |
 | Supply chain | Attaches an SBOM and SLSA provenance to the image, and pushes a signed build provenance attestation (`gh attestation verify`). |
 | Release notes | Appends the pull command, digest and tags. |
+| MCP Bundles | After the image, `make mcpb VERSION=X.Y.Z` builds a bundle per platform (macOS, Windows and Linux, each for amd64 and arm64), validates each manifest with `@anthropic-ai/mcpb`, attests them, uploads them as release assets and appends a *Claude Desktop* section to the release notes. Re-running it replaces the assets and doesn't add the section twice. |
 
 ## If something goes wrong
 

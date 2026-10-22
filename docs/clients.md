@@ -58,7 +58,48 @@ Read the notes under [stdio mode](#stdio-mode) first, especially about running m
 
 ## Claude Desktop
 
-Claude Desktop starts local MCP servers over stdio, so use [stdio mode](#stdio-mode). Open **Settings → Developer → Edit Config** and add:
+The easiest way is the **extension bundle**: a single `.mcpb` file that installs crunch-mcp into Claude Desktop with a settings form. It needs no Docker, no service and no `MCP_AUTH_TOKEN`, because Claude Desktop runs the server itself over stdio.
+
+### Install the extension
+
+1. Open the [latest release](https://github.com/mattoddie/crunch-mcp/releases/latest) and download the bundle for your computer:
+
+   | Computer | Bundle |
+   |---|---|
+   | Mac with Apple silicon (M1 and later) | `crunch-mcp-<version>-darwin-arm64.mcpb` |
+   | Mac with an Intel processor | `crunch-mcp-<version>-darwin-amd64.mcpb` |
+   | Windows on x64 (most PCs) | `crunch-mcp-<version>-windows-amd64.mcpb` |
+   | Windows on Arm | `crunch-mcp-<version>-windows-arm64.mcpb` |
+
+   There are Linux bundles too (`linux-amd64`, `linux-arm64`) for other clients that install MCP Bundles.
+
+2. Double-click the file, or drag it onto **Settings → Extensions** in Claude Desktop, and click **Install**.
+3. Fill in the settings and turn the extension on. The tools appear under the tools (🔨) menu, and the prompts under the **+** menu. You can allow or block each tool separately there.
+4. Ask Claude to *"log in to Crunch"*. It uses `crunch_auth_start` and gives you a link. After you click **Allow**, the page it lands on fails to load: paste its address into the chat and Claude finishes the login with `crunch_auth_complete`. The tokens are saved in `~/.config/crunch-mcp/tokens.json`.
+
+To update, install the bundle from a newer release the same way.
+
+### Settings
+
+| Setting | Variable | What to enter |
+|---|---|---|
+| **Client ID** (required) | `CRUNCH_CLIENT_ID` | The client ID from your Crunch API onboarding. See [Getting started](getting-started.md#1-get-api-access). |
+| **Client secret** | `CRUNCH_CLIENT_SECRET` | Only for confidential clients. Leave empty for a public client. |
+| **Redirect URI** | `CRUNCH_REDIRECT_URI` | Only if your API account has a redirect URI registered with Crunch. Empty means `http://127.0.0.1:8976/callback`. |
+| **Refresh token** | `CRUNCH_REFRESH_TOKEN` | Optional: start from a refresh token instead of logging in. Don't use it anywhere else afterwards. |
+| **Allow changes** | `CRUNCH_ALLOW_WRITES` | Off by default, which keeps the assistant read-only. Read [Security](security.md) before turning it on, and log in again afterwards so the login includes the extra scopes. |
+| **Allow deletes** | `CRUNCH_ALLOW_DELETES` | Also allows deleting records and removing payments. Needs **Allow changes**. |
+| **Allow emailing customers** | `CRUNCH_ALLOW_EMAIL` | Also allows emailing invoices and turning on payment reminders. Needs **Allow changes**. |
+| **Toolsets** | `CRUNCH_TOOLSETS` | Optional, such as `account,reference,expenses,suppliers,banking`. Empty means all, which is 31 KB of the model's context read-only and up to 79 KB with everything allowed. See [Keeping the tool list small](configuration.md#keeping-the-tool-list-small). |
+| **Files folder** | `CRUNCH_FILES_DIR` | Optional folder Claude may read receipts from (`file_path`) and save downloads to (`save_to`). Off when empty. |
+| **Audit log file** | `CRUNCH_AUDIT_LOG` | Optional full path to a file, such as `/Users/you/crunch-mcp-audit.jsonl`, that records every change Claude makes or previews. The folder must exist; the file is created. `stderr` writes the entries to the extension's log instead. Off when empty. See [Audit log](configuration.md#audit-log). |
+
+Settings you leave empty use their defaults, as described in [Configuration](configuration.md).
+
+### Without the extension
+
+You can also add crunch-mcp to Claude Desktop's configuration file yourself, using [stdio mode](#stdio-mode). Open **Settings → Developer → Edit Config** and add:
+
 
 ```json
 {

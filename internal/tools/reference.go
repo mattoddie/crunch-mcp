@@ -9,10 +9,10 @@ import (
 )
 
 type expenseTypesArgs struct {
-	Search            string `json:"search,omitempty" jsonschema:"Case-insensitive substring filter on names and groups"`
-	IncludeDeprecated bool   `json:"include_deprecated,omitempty" jsonschema:"Include deprecated types (default false)"`
-	Date              Date   `json:"date,omitempty" jsonschema:"Types valid on this date (YYYY-MM-DD; default today)"`
-	Raw               bool   `json:"raw,omitempty" jsonschema:"Return the API response unchanged"`
+	ListArgs
+	IncludeDeprecated bool `json:"include_deprecated,omitempty" jsonschema:"Include deprecated types (default false)"`
+	Date              Date `json:"date,omitempty" jsonschema:"Types valid on this date (YYYY-MM-DD; default today)"`
+	Raw               bool `json:"raw,omitempty" jsonschema:"Return the API response unchanged"`
 }
 
 type vatTypesArgs struct {
@@ -20,15 +20,17 @@ type vatTypesArgs struct {
 }
 
 type paymentMethodsArgs struct {
+	ListArgs
 	For       string `json:"for,omitempty" jsonschema:"Expense payments (default) or invoice (customer) payments"`
 	Direction string `json:"direction,omitempty" jsonschema:"For invoices: the payment direction as Crunch names it (default INCOMING, money received from customers)"`
 }
 
-type searchArgs struct {
-	Search string `json:"search,omitempty" jsonschema:"Case-insensitive substring filter"`
+type countriesArgs struct {
+	ListArgs
 }
 
 type personsArgs struct {
+	ListArgs
 	Date Date   `json:"date,omitempty" jsonschema:"Date the people were in post (YYYY-MM-DD; default today)"`
 	Role string `json:"role,omitempty" jsonschema:"Only people with this role, as Crunch names it (for example DIRECTOR)"`
 }
@@ -88,9 +90,7 @@ func registerReference(c *Context) {
 				types = append(types, o)
 			}
 		}
-		return filterAndLimit(types, a.Search, nil, func(o Obj) []string {
-			return []string{crunch.Str(o, "name"), crunch.Str(o, "display_name"), crunch.Str(o, "group")}
-		}), nil
+		return a.result(types), nil
 	})
 
 	add(c, Def{
@@ -145,15 +145,15 @@ func registerReference(c *Context) {
 		if err != nil {
 			return nil, err
 		}
-		return mapItems(crunch.List(res, "paymentMethods"), func(m Obj) Obj {
+		return a.result(mapItems(crunch.List(res, "paymentMethods"), func(m Obj) Obj {
 			return crunch.Compact(Obj{"name": crunch.Str(m, "paymentMethodName"), "display_name": crunch.Str(m, "paymentMethodDisplayableName")})
-		}), nil
+		})), nil
 	})
 
 	add(c, Def{
 		Toolset: "reference", Name: "crunch_list_countries", Title: "List countries",
 		Description: "List the countries Crunch knows, with the country codes to use in addresses and supplier records, and whether each is an EU member.",
-	}, func(ctx context.Context, a searchArgs) (any, error) {
+	}, func(ctx context.Context, a countriesArgs) (any, error) {
 		var res []any
 		if err := cl.Get(ctx, "/immutable-data/countries", nil, &res); err != nil {
 			return nil, err
@@ -161,15 +161,21 @@ func registerReference(c *Context) {
 		items := mapItems(crunch.Objs(res), func(c Obj) Obj {
 			return crunch.Compact(Obj{"code": crunch.Str(c, "countryCode"), "name": crunch.Str(c, "countryName"), "eu": crunch.Bool(c, "euMember")})
 		})
-		return filterAndLimit(items, a.Search, nil, func(o Obj) []string { return []string{crunch.Str(o, "code"), crunch.Str(o, "name")} }), nil
+		return a.result(items), nil
 	})
 
 	add(c, Def{
 		Toolset: "reference", Name: "crunch_list_accounting_periods", Title: "List open accounting periods",
 		Description: "List the open accounting periods (financial years) with their start and end dates and status. Expenses can only be created or changed in an open period; closed years can't be edited.",
-	}, func(ctx context.Context, _ NoArgs) (any, error) {
+	}, func(ctx context.Context, a ListArgs) (any, error) {
 		var out any
-		return out, cl.Get(ctx, "/expenses/ledgers", nil, &out)
+		if err := cl.Get(ctx, "/expenses/ledgers", nil, &out); err != nil {
+			return nil, err
+		}
+		if list, ok := out.([]any); ok {
+			return a.result(crunch.Objs(list)), nil
+		}
+		return out, nil
 	})
 
 	add(c, Def{
@@ -184,12 +190,12 @@ func registerReference(c *Context) {
 		if err := cl.Get(ctx, "/expenses/persons", crunch.Query{"date": date, "role": a.Role}, &res); err != nil {
 			return nil, err
 		}
-		return mapItems(crunch.Objs(res), func(p Obj) Obj {
+		return a.result(mapItems(crunch.Objs(res), func(p Obj) Obj {
 			name := crunch.Str(p, "displayableName")
 			if name == "" {
 				name = strings.TrimSpace(crunch.Str(p, "forename") + " " + crunch.Str(p, "surname"))
 			}
 			return crunch.Compact(Obj{"id": crunch.ID(p, "id"), "name": name, "forename": crunch.Str(p, "forename"), "surname": crunch.Str(p, "surname")})
-		}), nil
+		})), nil
 	})
 }

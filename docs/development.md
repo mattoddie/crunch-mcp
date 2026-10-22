@@ -38,19 +38,24 @@ The project deliberately has only two direct dependencies: the official MCP Go S
 ```text
 cmd/
 ├── crunch-mcp/          # the binary: serve, login, status, healthcheck and version commands
-└── gen-tool-docs/       # writes docs/tools.md from the registered tools and prompts
+├── gen-tool-docs/       # writes docs/tools.md from the registered tools and prompts
+└── mcpb/                # keeps mcpb/manifest.json in sync and packs the Claude Desktop bundles
+mcpb/                    # the bundle manifest (tools and prompts generated) and icon
 internal/
 ├── config/              # environment variables → typed Config (validation and default scopes live here)
 ├── crunch/
 │   ├── auth.go          # OAuth 2.0: PKCE login, the token file, serialised refreshes of rotating tokens
 │   ├── client.go        # Client: bearer auth, refresh on 401, retries on 429/503, errors with hints
+│   ├── dryrun.go        # Call: records the requests a tool call sends, stops them in a dry run, diffs updates
 │   ├── format.go        # helpers to read API objects and build compact summaries
 │   └── crunchtest/      # an in-process fake Crunch API and OAuth server for tests
 ├── httpserver/          # stateless Streamable HTTP, bearer auth, Host allow-list, /health
 └── tools/
     ├── tools.go         # the registration framework: Def, Gate, add[In](), Money, Date, schemas
     ├── server.go        # NewServer(): server instructions, registers every toolset and the prompts
-    ├── helpers.go       # paging, search and limit, read-modify-write merging, attachments, downloads
+    ├── guard.go         # dry_run and the audit log for tools that change things
+    ├── list.go          # the list arguments (search, fields, limit) and {total, returned, items}
+    ├── helpers.go       # paging, read-modify-write merging, attachments, downloads
     ├── prompts.go       # the built-in MCP prompts
     └── <toolset>.go     # one file per toolset: account, reference, banking, clients, suppliers, …
 ```
@@ -59,7 +64,7 @@ internal/
 
 1. An MCP client calls a tool, for example `crunch_update_client {client_id: 1, email: "new@example.com"}`.
 2. The MCP SDK validates the arguments against the tool's JSON Schema, which was inferred from its Go input struct, and decodes them into that struct.
-3. The handler registered by `add()` runs. For an update, it fetches the current record, merges in only what was passed, and sends the result back.
+3. The handler registered by `add()` runs. For an update, it fetches the current record, merges in only what was passed, and sends the result back. For a tool that changes things, `guard.go` wraps the call. `add()` gives the tool the `dry_run` argument, and a server middleware (which runs before validation, so refused calls are seen too) puts a `crunch.Call` in the context. The client records every request that changes something in it, and in a dry run stops the first one instead of sending it; GETs, and POSTs that only read, still go through. The handler's result is then replaced by the preview, and the middleware writes the audit log entry (`CRUNCH_AUDIT_LOG`).
 4. `crunch.Client` gets an access token from `Auth` (refreshing it first if it's about to expire), sends the request, and unwraps the JSON. On `401` it refreshes once and retries. On `429` or `503` it waits and retries up to three times. Other failures become a `crunch.Error` with Crunch's message and a hint for `401`, `403` and `500`.
 5. The handler returns a compact summary (built with `crunch/format.go`), or a `Result` for files.
 6. `add()` serialises the value to indented JSON text. A returned error becomes `isError: true` with the message, so the model can see what went wrong and adjust.
@@ -122,13 +127,14 @@ The input struct **is** the tool's argument schema:
 | `Idempotent` | Repeating the call with the same arguments has no further effect. Sets `idempotentHint`. |
 | `OpenWorld` | The tool reaches outside Crunch, such as emailing a customer. Sets `openWorldHint`. |
 | `Enums` | Restricts string arguments to fixed values, keyed by argument name, for example `{"for": {"expenses", "invoices"}}`. |
+| `Writes`, `Reads` | For a `Read`-gated tool that can still change things (the raw API tool with writes on): `Writes` gives it `dry_run` and audit logging like a write tool, and `Reads(args)` reports which calls only read, so they stay out of the audit log. Tools with any other gate get `dry_run` and audit logging automatically. |
 
 ### Helpers
 
 | Helper | Use it for |
 |---|---|
-| `PageArgs` and `fetchPaged()` | List tools over Crunch's paged endpoints: `page`, `size`, `sort`, and `all` with `max_items`. |
-| `filterAndLimit()` | List tools over endpoints that return everything: a `search` filter and a `limit`, with consistent `{total, returned, items}` results. |
+| `ListArgs` and `a.result(items)` | Every list tool: embed `ListArgs` for `search`, `fields` and `limit`, summarise the items, and return `a.result(items)` for a consistent `{total, returned, items}`. |
+| `PageArgs` and `fetchPaged()` | List tools over Crunch's paged endpoints: `page`, `size`, `sort`, and `all` with `max_items`. Pass the tool's `ListArgs` too; they apply to the items fetched. |
 | `deepMerge()` | Read-modify-write updates: merge the changes into the record fetched from Crunch. |
 | `set()` | Build a request body, skipping empty strings and nil pointers. |
 | `merge()` | Apply `extra` or `changes` (raw Crunch fields) last, so they override typed arguments. |
@@ -214,6 +220,8 @@ claude mcp add --transport http crunch-dev http://localhost:8080/mcp --header "A
 ## Docs that are generated
 
 [`docs/tools.md`](tools.md) is generated by `cmd/gen-tool-docs`. The program builds the server with every tool enabled, records each tool's toolset and gate as it's registered, reads the tools and prompts back over MCP, and writes the reference. Don't edit `docs/tools.md` by hand. Change the tool's title, description or `jsonschema` tags and run `make docs`. CI runs `make docs-check` and fails if the committed file is stale.
+
+The `tools` and `prompts` in [`mcpb/manifest.json`](../mcpb/manifest.json) are generated too, by `go run ./cmd/mcpb manifest` (part of `make docs`), from the server started with the bundle's default settings. Edit the rest of the manifest (settings, descriptions) by hand. `make mcpb VERSION=1.2.3` builds a bundle per platform in `dist/`; CI validates them with `npx @anthropic-ai/mcpb validate` and smoke-tests the Linux one over stdio.
 
 ## The website
 

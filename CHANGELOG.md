@@ -6,6 +6,20 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+### Added
+
+- An extension bundle (`.mcpb`) for one-click installation in Claude Desktop, for macOS, Windows and Linux on amd64 and arm64. Each release has the bundles attached, and their settings form covers the client ID and secret, the access switches, toolsets, a files folder and the audit log. Build them with `make mcpb VERSION=…`. See [Claude Desktop](docs/clients.md#claude-desktop).
+- `dry_run` on every tool that changes something, and on `crunch_api_request` when writes are on. The request is built and checked but not sent; the tool returns the method, path and body it would send, or for an update the fields that would change (from and to). See [Previewing changes](docs/usage.md#previewing-changes-with-dry_run).
+- `CRUNCH_AUDIT_LOG`: an absolute file path (created with mode `0600`) or `stderr`. Every call of a tool that changes things, including dry runs, failures and refused calls, is logged as a JSON line with the tool, its arguments (secrets redacted, file contents shortened), the requests sent and the outcome. See [Audit log](docs/configuration.md#audit-log).
+- `search`, `fields` and `limit` on every list tool except `crunch_list_vat_types`. `search` matches any value in an item, `fields` keeps only the named fields (dot paths reach nested ones), and on paged lists they apply to the items fetched, with `searched` saying how many were looked at.
+- A [Keeping the tool list small](docs/configuration.md#keeping-the-tool-list-small) section with the tool count and `tools/list` size for common toolset combinations.
+
+### Changed
+
+- **Breaking:** `crunch_list_payment_methods`, `crunch_list_persons` and (when Crunch returns a list) `crunch_list_accounting_periods` return `{total, returned, items}` instead of a bare list, like the other list tools.
+- `search` on `crunch_list_clients`, `crunch_list_suppliers`, `crunch_list_bank_accounts`, `crunch_list_credit_cards`, `crunch_list_expense_types` and `crunch_list_countries` matches any value in the returned item, instead of a fixed set of fields.
+- A setting that is empty, or exactly `${user_config.<key>}` (how Claude Desktop passes an extension setting left blank), counts as unset, for every variable and its `_FILE` form.
+
 ### Security
 
 - Built with Go 1.27.3, which fixes a `crypto/x509` vulnerability in the standard library (GO-2026-6809).

@@ -41,6 +41,8 @@ The best defence is to limit what's possible, not to rely on the model behaving.
 | Tool annotations | Built in | Each tool is marked read-only or not. With `CRUNCH_FILES_DIR` set, the download tools aren't marked read-only, because `save_to` writes files. Deletes and issuing an invoice (which is final) are marked destructive, and emailing is marked open-world, so MCP clients can ask for your confirmation. |
 | Server instructions | Built in | With writes on, the model is told to confirm amounts, dates and VAT with you before changing records and before issuing an invoice, and with email on, to show you the recipients and message first. This helps, but it isn't a security boundary. |
 | Careful updates | Built in | Updates fetch the current record and change only what was asked, so payments and attachments aren't lost by accident. |
+| Dry runs | `dry_run` on every tool that changes something | Builds and checks the request and returns it, with a field-by-field diff for updates, without sending it. The switches and checks above still apply. See [Previewing changes](usage.md#previewing-changes-with-dry_run). |
+| Audit log | `CRUNCH_AUDIT_LOG` (off by default) | Appends a JSON line for every call of a tool that changes things, including dry runs, failures and refused calls: the tool, its arguments (secrets redacted, file contents shortened) and each request sent with its HTTP status. Use it to review what an assistant did. See [Audit log](configuration.md#audit-log). |
 | No token output | Built in | No tool returns the access or refresh token. `crunch_auth_status` and `crunch-mcp status` describe the login without showing it. |
 | Endpoint auth | `MCP_AUTH_TOKEN` | Bearer token of at least 16 characters required on every request, checked in constant time. The http transport refuses to start without one unless `MCP_ALLOW_UNAUTHENTICATED=true`, which also requires `MCP_ALLOWED_HOSTS`. The binary listens on `127.0.0.1` unless `MCP_HTTP_HOST` says otherwise. |
 | Host allow-list | `MCP_ALLOWED_HOSTS` | Rejects requests with an unexpected `Host` header, and browser requests from an `Origin` (even an empty one, or `null`) that isn't on the list. An `Origin` entry without a port matches only the default port. This blocks DNS-rebinding and cross-site attacks from browser pages. |
@@ -109,6 +111,7 @@ If you set `CRUNCH_SCOPES=all`, or turn writes off without logging in again, the
 - [ ] The port is only reachable from machines that need it, or published on `127.0.0.1` behind a proxy.
 - [ ] TLS terminates at a reverse proxy if traffic crosses an untrusted network. Prefer a VPN to a public endpoint.
 - [ ] Writes, deletes and email are only enabled if you need them.
+- [ ] With writes on, `CRUNCH_AUDIT_LOG` records what the assistant changed.
 - [ ] The login's scopes match the settings: you logged in again after changing them, and `CRUNCH_SCOPES` is unset.
 - [ ] `CRUNCH_TOOLSETS` lists only the toolsets you use.
 - [ ] The token file is on a persistent volume that only the server can read, and isn't copied anywhere else.

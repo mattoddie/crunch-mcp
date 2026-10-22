@@ -31,6 +31,7 @@ func (r Recurrence) body() Obj {
 
 type listRecurringArgs struct {
 	PageArgs
+	ListArgs
 	Raw bool `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
 }
 
@@ -69,7 +70,7 @@ func registerRecurring(c *Context) {
 		if !a.Raw {
 			mapFn = crunch.SummarizeRecurringExpense
 		}
-		return fetchPaged(ctx, cl, "/expenses/recurring-expenses", nil, a.PageArgs, "", mapFn)
+		return fetchPaged(ctx, cl, "/expenses/recurring-expenses", nil, a.PageArgs, a.ListArgs, "", mapFn)
 	})
 
 	add(c, Def{

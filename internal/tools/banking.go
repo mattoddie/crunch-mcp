@@ -9,8 +9,8 @@ import (
 
 type listAccountsArgs struct {
 	Status string `json:"status,omitempty" jsonschema:"Which to list: active (default), archived or all"`
-	Search string `json:"search,omitempty" jsonschema:"Case-insensitive substring filter on names and numbers"`
-	Raw    bool   `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
+	ListArgs
+	Raw bool `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
 }
 
 type bankAccountIDArgs struct {
@@ -21,6 +21,7 @@ type bankPaymentsArgs struct {
 	BankAccountID int64 `json:"bank_account_id" jsonschema:"Bank account ID (see crunch_list_bank_accounts)"`
 	Reconciled    bool  `json:"reconciled" jsonschema:"true for payments matched to bank statement entries, false for those still waiting to be reconciled"`
 	PageArgs
+	ListArgs
 	Raw bool `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
 }
 
@@ -129,9 +130,7 @@ func registerBanking(c *Context) {
 		if !a.Raw {
 			items = mapItems(items, crunch.SummarizeBankAccount)
 		}
-		return filterAndLimit(items, a.Search, nil, func(o Obj) []string {
-			return []string{crunch.Str(o, "name"), crunch.Str(o, "displayName"), crunch.Str(o, "bank"), crunch.Str(o, "bankName"), crunch.Str(o, "account_number"), crunch.Str(o, "accountNumber")}
-		}), nil
+		return a.result(items), nil
 	})
 
 	add(c, Def{
@@ -150,7 +149,7 @@ func registerBanking(c *Context) {
 		if !a.Raw {
 			mapFn = crunch.SummarizePayment
 		}
-		return fetchPaged(ctx, cl, path("/banking/bank-accounts/%d/payments", a.BankAccountID), crunch.Query{"reconciled": a.Reconciled}, a.PageArgs, "date,desc", mapFn)
+		return fetchPaged(ctx, cl, path("/banking/bank-accounts/%d/payments", a.BankAccountID), crunch.Query{"reconciled": a.Reconciled}, a.PageArgs, a.ListArgs, "date,desc", mapFn)
 	})
 
 	add(c, Def{
@@ -254,9 +253,7 @@ func registerBanking(c *Context) {
 		if !a.Raw {
 			items = mapItems(items, crunch.SummarizeCreditCard)
 		}
-		return filterAndLimit(items, a.Search, nil, func(o Obj) []string {
-			return []string{crunch.Str(o, "name"), crunch.Str(o, "displayName"), crunch.Str(o, "card_number"), crunch.Str(o, "cardNumber")}
-		}), nil
+		return a.result(items), nil
 	})
 
 	add(c, Def{

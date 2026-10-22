@@ -7,11 +7,10 @@ import (
 )
 
 type listSuppliersArgs struct {
-	Search          string `json:"search,omitempty" jsonschema:"Case-insensitive substring filter on name, contact and VAT number"`
 	Name            string `json:"name,omitempty" jsonschema:"Exact company name to look up"`
 	IncludeArchived bool   `json:"include_archived,omitempty" jsonschema:"Include archived suppliers (default false)"`
-	Limit           *int   `json:"limit,omitempty" jsonschema:"Maximum number of results"`
-	Raw             bool   `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
+	ListArgs
+	Raw bool `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
 }
 
 type supplierIDArgs struct {
@@ -60,7 +59,7 @@ func registerSuppliers(c *Context) {
 
 	add(c, Def{
 		Toolset: "suppliers", Name: "crunch_list_suppliers", Title: "List suppliers",
-		Description: "List suppliers (who you buy from), with their default expense type, country and VAT number. `search` matches part of a name; `name` asks Crunch for an exact company name. Use the IDs when creating expenses.",
+		Description: "List suppliers (who you buy from), with their default expense type, country and VAT number. `name` asks Crunch for an exact company name. Use the IDs when creating expenses.",
 	}, func(ctx context.Context, a listSuppliersArgs) (any, error) {
 		var items []Obj
 		if a.Name != "" {
@@ -85,13 +84,10 @@ func registerSuppliers(c *Context) {
 			items = kept
 		}
 		crunch.SortBy(items, "companyName")
-		out := filterAndLimit(items, a.Search, a.Limit, func(o Obj) []string {
-			return []string{crunch.Str(o, "companyName"), crunch.Str(o, "contactName"), crunch.Str(o, "vatRegistrationNumber"), crunch.Str(o, "id")}
-		})
 		if !a.Raw {
-			out["items"] = mapItems(out["items"].([]Obj), crunch.SummarizeSupplier)
+			items = mapItems(items, crunch.SummarizeSupplier)
 		}
-		return out, nil
+		return a.result(items), nil
 	})
 
 	add(c, Def{

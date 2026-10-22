@@ -5,5 +5,8 @@ bin
 docs
 website
 .github
+mcpb
+dist
+.build
 *.md
 tokens.json

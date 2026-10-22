@@ -44,6 +44,7 @@ type listInvoicesArgs struct {
 	ClientID *int64 `json:"client_id,omitempty" jsonschema:"Only this client's invoices (see crunch_list_clients)"`
 	Status   string `json:"status,omitempty" jsonschema:"Only invoices with this status, as shown in the status field (for example DRAFT); fetches all pages and filters them here"`
 	PageArgs
+	ListArgs
 	Raw bool `json:"raw,omitempty" jsonschema:"Return the full objects from the API instead of compact summaries (larger)"`
 }
 
@@ -203,16 +204,16 @@ func registerInvoices(c *Context) {
 			mapFn = nil
 		}
 		if a.Status == "" {
-			return fetchPaged(ctx, cl, "/invoices", crunch.Query{"clientId": a.ClientID}, a.PageArgs, "issuedDate,desc", mapFn)
+			return fetchPaged(ctx, cl, "/invoices", crunch.Query{"clientId": a.ClientID}, a.PageArgs, a.ListArgs, "issuedDate,desc", mapFn)
 		}
 		pa := a.PageArgs
 		pa.All = true
-		res, err := fetchPaged(ctx, cl, "/invoices", crunch.Query{"clientId": a.ClientID}, pa, "issuedDate,desc", nil)
+		res, all, err := fetchPages(ctx, cl, "/invoices", crunch.Query{"clientId": a.ClientID}, pa, "issuedDate,desc")
 		if err != nil {
 			return nil, err
 		}
 		var items []Obj
-		for _, it := range res["items"].([]Obj) {
+		for _, it := range all {
 			if strings.EqualFold(crunch.Str(it, "status"), a.Status) {
 				if mapFn != nil {
 					it = mapFn(it)
@@ -220,10 +221,7 @@ func registerInvoices(c *Context) {
 				items = append(items, it)
 			}
 		}
-		if items == nil {
-			items = []Obj{}
-		}
-		out := Obj{"total": len(items), "returned": len(items), "items": items}
+		out := a.result(items)
 		if res["truncated"] != nil {
 			out["note"] = res["note"]
 		}

@@ -171,3 +171,54 @@ func TestLoopbackHTTPAllowed(t *testing.T) {
 		t.Errorf("loopback http: %v", err)
 	}
 }
+
+// Claude Desktop passes an optional bundle setting the user left empty as "", or, in some
+// versions, as the literal ${user_config.<key>}. Both mean unset.
+func TestBundlePlaceholdersMeanUnset(t *testing.T) {
+	cfg, err := Load(MapEnv(map[string]string{
+		"HOME":                 "/home/x",
+		"CRUNCH_TOOLSETS":      "${user_config.toolsets}",
+		"CRUNCH_CLIENT_SECRET": "${user_config.client_secret}",
+		"CRUNCH_AUDIT_LOG":     "${user_config.audit_log}",
+		"CRUNCH_FILES_DIR":     "",
+		"CRUNCH_TOKEN_FILE":    "${user_config.token_file}",
+		"CRUNCH_SCOPES":        "x${user_config.scopes}",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Crunch.ClientSecret != "" || cfg.Tools.AuditLog != "" || len(cfg.Tools.Toolsets) != len(Toolsets) || !strings.HasSuffix(cfg.Crunch.TokenFile, "tokens.json") {
+		t.Errorf("placeholders were used as values: %+v %+v", cfg.Crunch, cfg.Tools)
+	}
+	if cfg.Crunch.Scopes != "x${user_config.scopes}" {
+		t.Errorf("only a whole-value placeholder means unset: %q", cfg.Crunch.Scopes)
+	}
+}
+
+func TestAuditLogSetting(t *testing.T) {
+	load := func(v string) (*Config, error) {
+		return Load(MapEnv(map[string]string{"CRUNCH_AUDIT_LOG": v}))
+	}
+	if cfg, err := load(""); err != nil || cfg.Tools.AuditLog != "" {
+		t.Errorf("off by default: %v %v", cfg, err)
+	}
+	if cfg, err := load("stderr"); err != nil || cfg.Tools.AuditLog != AuditLogStderr {
+		t.Errorf("stderr: %v %v", cfg, err)
+	}
+	file := filepath.Join(t.TempDir(), "audit.jsonl")
+	if cfg, err := load(file); err != nil || cfg.Tools.AuditLog != file {
+		t.Fatalf("file: %v %v", cfg, err)
+	}
+	if st, err := os.Stat(file); err != nil || st.Mode().Perm() != AuditLogMode {
+		t.Errorf("created with mode %v (%v)", st.Mode(), err)
+	}
+	for v, want := range map[string]string{
+		"audit.jsonl": "absolute path",
+		filepath.Join(t.TempDir(), "missing", "audit.jsonl"): "cannot write",
+		"/run/secrets/audit.jsonl":                           "must not be inside",
+	} {
+		if _, err := load(v); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v, want %q", v, err, want)
+		}
+	}
+}
