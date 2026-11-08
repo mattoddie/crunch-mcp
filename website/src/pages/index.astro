@@ -1,6 +1,7 @@
 ---
 import logo from "../../../docs/assets/logo.svg?raw";
 import { prompts, toolsets, totals } from "../lib/tools";
+import { DESCRIPTION as description } from "../lib/llms";
 
 const GITHUB = "https://github.com/mattoddie/crunch-mcp";
 
@@ -21,8 +22,6 @@ const gridLines = [15000, 20000, 25000].map((v) => ({ y: py(v), label: `£${v / 
 const dayTicks = [0, 7, 15].map((i) => ({ x: px(i), label: `${i + 1} Oct` }));
 
 const title = "crunch-mcp: talk to your Crunch books";
-const description =
-  "An open-source MCP server for Crunch Accounting. Ask Claude and other AI assistants about your expenses, invoices, clients and bank accounts, and let them record receipts and raise invoices when you allow it. Runs in Docker.";
 
 const toolsetIcons: Record<string, string> = {
   account: "🏢",
@@ -109,6 +108,9 @@ const connectSnippet = `claude mcp add --transport http crunch \\
     <meta property="og:description" content={description} />
     <meta property="og:url" content={Astro.site} />
     <meta property="og:image" content={new URL("/og.png", Astro.site)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title} />
     <meta name="twitter:card" content="summary_large_image" />
     <script
       type="application/ld+json"
