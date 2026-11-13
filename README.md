@@ -35,7 +35,7 @@ Ask about your business in plain English. The assistant picks from **70 tools** 
 
 ## Highlights
 
-- **🐳 Docker-first and tiny.** One image (`ghcr.io/mattoddie/crunch-mcp`) for `linux/amd64` and `linux/arm64`, about 21 MB. It's a single static Go binary on a distroless base, with no shell or package manager, running as a non-root user. It serves Streamable HTTP for a long-running service, or stdio for `docker run -i`. You can also run the binary on its own.
+- **🐳 Docker-first and tiny.** One image (`ghcr.io/mattoddie/crunch-mcp`) for `linux/amd64` and `linux/arm64`, about 21 MB. It's a single static Go binary on a distroless base, with no shell or package manager, running as a non-root user. It serves Streamable HTTP for a long-running service, or stdio for `docker run -i`. Each release also has plain binaries for macOS, Linux and Windows on `amd64` and `arm64`.
 - **🛡️ Safe by default.** The server is read-only unless you turn on writes. Deleting needs a second switch, and emailing invoices or payment reminders to customers needs a third. The switches also hold inside request bodies and the raw API tool, and the HTTP server requires a bearer token. Tools that aren't allowed aren't registered at all, and destructive tools, such as deletes and issuing an invoice, are labelled so your MCP client asks before running them.
 - **🔑 Least-privilege login.** It logs in with Crunch's own OAuth 2.0 flow (with PKCE) and asks only for the scopes your settings need. Tokens never appear in tool output.
 - **🔄 Stays logged in.** Crunch rotates refresh tokens, and reusing an old one revokes your login. crunch-mcp saves each new token before using it and never refreshes twice at once, so it keeps working across restarts.
@@ -82,7 +82,7 @@ claude mcp add --transport http crunch http://<docker-host>:8080/mcp \
 
 Now ask *"How's my business doing?"* in Claude Code.
 
-Using **Claude Desktop, VS Code, Cursor or Codex**? See [Connecting MCP clients](docs/clients.md). Prefer not to run a service? Use [stdio mode](docs/clients.md#stdio-mode) with `docker run -i` or the local binary.
+Using **Claude Desktop, VS Code, Cursor or Codex**? See [Connecting MCP clients](docs/clients.md). Prefer not to run a service? Use [stdio mode](docs/clients.md#stdio-mode) with `docker run -i`, or a [release binary](docs/deployment.md#running-without-docker) without Docker.
 
 crunch-mcp is listed in the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/crunch-mcp) as `io.github.mattoddie/crunch-mcp`, so clients that install servers from the registry can set it up for you, with the Docker image in stdio mode or an extension bundle.
 

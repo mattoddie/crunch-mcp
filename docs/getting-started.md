@@ -15,7 +15,7 @@ This guide takes you from nothing to asking your first question about your Crunc
 
 - **A Crunch account.** Any account you can log in to at [crunch.co.uk](https://www.crunch.co.uk) works.
 - **Crunch API access**, which gives you a client ID. See the next step.
-- **A machine that runs Docker.** This could be a NAS, a home server, a small VM or your laptop. The image supports both `amd64` and `arm64`. If you'd rather not use Docker, there's a single binary too. See [Running without Docker](deployment.md#running-without-docker).
+- **A machine that runs Docker.** This could be a NAS, a home server, a small VM or your laptop. The image supports both `amd64` and `arm64`. If you'd rather not use Docker, each release also has plain binaries for macOS, Linux and Windows. See [Running without Docker](deployment.md#running-without-docker) and [connecting a client to the binary](clients.md#without-docker).
 - **A web browser** for logging in to Crunch once.
 - **An MCP client**, such as [Claude Code](https://claude.com/claude-code), Claude Desktop, VS Code, Cursor or Codex.
 
