@@ -1,6 +1,6 @@
 # Releasing
 
-Releases are driven by **version tags**. Pushing a tag like `v1.2.3` triggers the [Release workflow](../.github/workflows/release.yml). That workflow creates a draft GitHub release, builds the Docker image for `linux/amd64` and `linux/arm64` and pushes it to `ghcr.io/mattoddie/crunch-mcp`, then builds the Claude Desktop extension bundles (`.mcpb`), attaches them to the draft and publishes the release. For stable releases it finally publishes the new version to the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/crunch-mcp). Nothing is published by merging to `main` alone.
+Releases are driven by **version tags**. Pushing a tag like `v1.2.3` triggers the [Release workflow](../.github/workflows/release.yml). That workflow creates a draft GitHub release, builds the Docker image for `linux/amd64` and `linux/arm64` and pushes it to `ghcr.io/mattoddie/crunch-mcp`, then builds the Claude Desktop extension bundles (`.mcpb`) and plain binary archives, attaches them to the draft with a `SHA256SUMS` file and publishes the release. For stable releases it finally publishes the new version to the [official MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.mattoddie/crunch-mcp). Nothing is published by merging to `main` alone.
 
 - [Versioning](#versioning)
 - [Release checklist](#release-checklist)
@@ -36,7 +36,7 @@ The version comes **from the tag**. There's no version file in the repository: b
    git push origin v1.2.0
    ```
 
-4. **Watch the workflow.** Open **Actions → Release**. It takes a few minutes. It creates a draft release with notes generated from the merged PRs, adds a *Container image* section with the pull command, digest and tags, attaches the six `.mcpb` bundles and adds a *Claude Desktop* section listing them, then publishes the release.
+4. **Watch the workflow.** Open **Actions → Release**. It takes a few minutes. It creates a draft release with notes generated from the merged PRs, adds a *Container image* section with the pull command, digest and tags, attaches the six `.mcpb` bundles and the binary archives and adds *Claude Desktop* and *Binaries* sections listing them, then publishes the release.
 5. **Edit the release notes** if needed. The notes and title of a published release can still be edited; its assets and tag can't.
 6. **Check the image:** `docker pull ghcr.io/mattoddie/crunch-mcp:1.2.0`, then `docker run --rm ghcr.io/mattoddie/crunch-mcp:1.2.0 version`.
 7. **Check a bundle:** download the one for your computer from the release and install it in Claude Desktop (**Settings → Extensions**), or unzip it and check the manifest with `npx @anthropic-ai/mcpb@2.1.2 validate manifest.json`.
@@ -66,7 +66,7 @@ Pre-releases are published only under their exact version (`ghcr.io/mattoddie/cr
 | Push | To `ghcr.io/mattoddie/crunch-mcp` using the workflow's `GITHUB_TOKEN`. No personal tokens are needed. |
 | Supply chain | Attaches an SBOM and SLSA provenance to the image, and pushes a signed build provenance attestation (`gh attestation verify`). |
 | Release notes | Appends the pull command, digest and tags. |
-| MCP Bundles | After the image, `make mcpb VERSION=X.Y.Z` builds a bundle per platform (macOS, Windows and Linux, each for amd64 and arm64), validates each manifest with `@anthropic-ai/mcpb`, attests them, uploads them to the draft release and appends a *Claude Desktop* section to the release notes. Re-running it before publishing replaces the assets and doesn't add the section twice. |
+| MCP Bundles and binaries | After the image, `make dist VERSION=X.Y.Z` builds a bundle per platform (macOS, Windows and Linux, each for amd64 and arm64), the same binaries as `crunch-mcp-X.Y.Z-<os>-<arch>.tar.gz` (`.zip` for Windows) with the licence, and `SHA256SUMS`. It checks the Linux binary reports the version and the checksums match, validates each manifest with `@anthropic-ai/mcpb`, attests the bundles and archives, uploads them to the draft release and appends *Claude Desktop* and *Binaries* sections to the release notes. Re-running it before publishing replaces the assets and doesn't add the section twice. |
 | Publish | Publishes the draft once the image and the bundles are in place. Published releases are [immutable](#immutable-releases). |
 | MCP Registry | Stable releases only, after the release is published. Stamps the version, image tag and the published bundles' SHA-256 hashes into a copy of `server.json`, then publishes it with a pinned, checksum-verified `mcp-publisher`, logging in with GitHub OIDC. See [The MCP Registry](#the-mcp-registry). |
 

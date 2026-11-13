@@ -238,3 +238,29 @@ Tips:
 - **Always pass `-i` and never `-t`** when serving. A TTY corrupts the MCP message stream. (The `login` command is the exception: it needs `-it` so you can paste the URL.)
 - **Docker on another machine** works too. Set `DOCKER_HOST` in the client's `env`. The volume lives on that machine.
 - **Pin a version** (for example `:1.2.3`) so a new `latest` doesn't surprise you. See [Deployment](deployment.md#image-tags).
+
+### Without Docker
+
+With a [release binary](deployment.md#download-a-release-binary), the client runs it directly. Log in once with `crunch-mcp login` and the same environment, then use the binary's full path as the command and pass the settings as environment variables. In a JSON client config, that looks like:
+
+```json
+{
+  "mcpServers": {
+    "crunch": {
+      "command": "/usr/local/bin/crunch-mcp",
+      "env": {
+        "CRUNCH_CLIENT_ID": "your-client-id",
+        "CRUNCH_CLIENT_SECRET": ""
+      }
+    }
+  }
+}
+```
+
+The binary uses stdio by default, so there's no `MCP_TRANSPORT` to set. Leave `CRUNCH_CLIENT_SECRET` empty for a public client. In Claude Code:
+
+```sh
+claude mcp add crunch \
+  --env CRUNCH_CLIENT_ID=your-client-id \
+  -- /usr/local/bin/crunch-mcp
+```
