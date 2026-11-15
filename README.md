@@ -24,7 +24,7 @@ An open-source [Model Context Protocol](https://modelcontextprotocol.io) server 
 > **"How's the business looking this month?"**
 > *You have £18,240 across your two bank accounts and £312 on the company credit card. Three sales invoices are unpaid, £7,800 in total. INV-0042 to Example Client Ltd (£2,400) is 12 days overdue; the other two aren't due yet. On the spending side, four September expenses have no receipt attached and one bill from Example Hosting Ltd (£96) is still unpaid. Want me to draft a polite chaser for INV-0042, or list the expenses that are missing receipts?*
 
-Ask about your business in plain English. The assistant picks from **70 tools** to look things up and, if you allow it, make changes. Some examples:
+Ask about your business in plain English. The assistant picks from **74 tools** to look things up and, if you allow it, make changes. Some examples:
 
 - 🩺 *"Give me a health check of the business."*
 - 🧾 *"Here's a receipt for a train ticket to Leeds. Record it as an expense paid from the business account."*
