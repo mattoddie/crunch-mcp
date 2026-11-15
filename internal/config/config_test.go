@@ -29,7 +29,7 @@ func TestDefaults(t *testing.T) {
 	if c.Scopes != "read:all offline_access" {
 		t.Errorf("read-only scopes: %q", c.Scopes)
 	}
-	if cfg.Tools.AllowWrites || cfg.Tools.AllowDeletes || cfg.Tools.AllowEmail || len(cfg.Tools.Toolsets) != len(Toolsets) {
+	if cfg.Tools.AllowWrites || cfg.Tools.AllowDeletes || cfg.Tools.AllowEmail || len(cfg.Tools.Toolsets) != len(Toolsets)-len(OptInToolsets) || cfg.Tools.Toolsets["raw"] {
 		t.Errorf("tools: %+v", cfg.Tools)
 	}
 }
@@ -187,7 +187,7 @@ func TestBundlePlaceholdersMeanUnset(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Crunch.ClientSecret != "" || cfg.Tools.AuditLog != "" || len(cfg.Tools.Toolsets) != len(Toolsets) || !strings.HasSuffix(cfg.Crunch.TokenFile, "tokens.json") {
+	if cfg.Crunch.ClientSecret != "" || cfg.Tools.AuditLog != "" || len(cfg.Tools.Toolsets) != len(Toolsets)-len(OptInToolsets) || cfg.Tools.Toolsets["raw"] || !strings.HasSuffix(cfg.Crunch.TokenFile, "tokens.json") {
 		t.Errorf("placeholders were used as values: %+v %+v", cfg.Crunch, cfg.Tools)
 	}
 	if cfg.Crunch.Scopes != "x${user_config.scopes}" {
@@ -220,5 +220,25 @@ func TestAuditLogSetting(t *testing.T) {
 		if _, err := load(v); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: %v, want %q", v, err, want)
 		}
+	}
+}
+
+// The raw API tool must be asked for by name: "all", and so the default, leaves it out.
+func TestRawToolsetIsOptIn(t *testing.T) {
+	for _, v := range []string{"", "all", "all,invoices"} {
+		cfg, err := Load(MapEnv(map[string]string{"CRUNCH_TOOLSETS": v}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.Tools.Toolsets["raw"] || !cfg.Tools.Toolsets["invoices"] {
+			t.Errorf("CRUNCH_TOOLSETS=%q: %v", v, cfg.Tools.Toolsets)
+		}
+	}
+	cfg, err := Load(MapEnv(map[string]string{"CRUNCH_TOOLSETS": "all,raw"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.Tools.Toolsets["raw"] || !cfg.Tools.Toolsets["expenses"] {
+		t.Errorf("all,raw: %v", cfg.Tools.Toolsets)
 	}
 }

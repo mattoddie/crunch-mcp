@@ -71,7 +71,7 @@
         },
         {
           "name": "CRUNCH_TOOLSETS",
-          "description": "Optional comma-separated toolsets to expose fewer tools, e.g. account,reference,expenses. Empty means all."
+          "description": "Optional comma-separated toolsets, e.g. account,reference,expenses. Empty means all but raw (list raw by name)."
         },
         {
           "name": "CRUNCH_FILES_DIR",

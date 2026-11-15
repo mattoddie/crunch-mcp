@@ -103,6 +103,9 @@ func registerSuppliers(c *Context) {
 		Description: "Create a supplier. Only company_name is required; a default expense_type makes new expenses for this supplier quicker. Check crunch_list_suppliers first to avoid duplicates.",
 		Gate:        Write,
 	}, func(ctx context.Context, a createSupplierArgs) (any, error) {
+		if err := c.checkFields(a.Extra, true); err != nil {
+			return nil, err
+		}
 		var out any
 		return out, cl.Post(ctx, "/expenses/suppliers", nil, a.body(a.CompanyName), &out)
 	})
@@ -112,6 +115,9 @@ func registerSuppliers(c *Context) {
 		Description: "Change a supplier's details, or archive/restore it. Only the fields you pass change.",
 		Gate:        Write, Idempotent: true,
 	}, func(ctx context.Context, a updateSupplierArgs) (any, error) {
+		if err := c.checkFields(a.Extra, false); err != nil {
+			return nil, err
+		}
 		p := path("/expenses/suppliers/%d", a.SupplierID)
 		var current Obj
 		if err := cl.Get(ctx, p, nil, &current); err != nil {

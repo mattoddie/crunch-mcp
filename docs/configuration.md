@@ -99,7 +99,7 @@ Don't use the same refresh token anywhere else afterwards. Its first use by crun
 | `CRUNCH_ALLOW_DELETES` | `false` | Also register tools that delete records or remove payments. Without it, updates (including `changes` and raw `PUT` requests) must keep a record's existing payments and attachments, because Crunch deletes whatever an update leaves out. Requires `CRUNCH_ALLOW_WRITES=true`. |
 | `CRUNCH_ALLOW_EMAIL` | `false` | Also register `crunch_email_invoice`, which emails an invoice to a customer from Crunch, and allow turning on Crunch's payment reminders (`send_reminders`, or `sendReminders` in `extra`, `changes` or raw requests), which are emails too. Requires `CRUNCH_ALLOW_WRITES=true`. |
 | `CRUNCH_FILES_DIR` | (unset: disabled) | A directory the server may read attachments from (`file_path`) and save downloads to (`save_to`). Paths are relative to it or absolute inside it, and may not lead out of it through `..` or symlinks. The token file, its lock and temporary files, and anything under `/run/secrets` are always refused. When unset, `file_path` and `save_to` are refused: send attachments as `content_base64` and use the downloaded content instead. In Docker, mount a folder for it, for example `./files:/files` with `CRUNCH_FILES_DIR=/files`. It applies at every access level, since saving a download is local, not a change in Crunch. While it is set, the download tools are no longer annotated read-only, so MCP clients that confirm non-read-only tools ask before a download. |
-| `CRUNCH_TOOLSETS` | `all` | Comma-separated list of [toolsets](#choosing-toolsets) to expose. |
+| `CRUNCH_TOOLSETS` | `all` | Comma-separated list of [toolsets](#choosing-toolsets) to expose. `all` means every toolset except `raw`, which must be listed by name, for example `all,raw`. |
 
 Boolean variables accept `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. Anything else stops the server with an error.
 
@@ -231,7 +231,7 @@ Every tool's name, description and argument schema is sent to the model, which u
 | `expenses` | Expenses, payments and receipts |
 | `recurring` | Recurring expenses |
 | `invoices` | Sales invoices, payments received, PDFs |
-| `raw` | Any API path. Handy, but gives broad access. |
+| `raw` | Any API path. Handy, but gives broad access, so `all` leaves it out: list it by name (`all,raw`) to turn it on. |
 
 The [tool reference](tools.md) lists the tools in each toolset. A read-only setup registers about half the tools. Some suggested sets:
 
@@ -240,20 +240,21 @@ The [tool reference](tools.md) lists the tools in each toolset. A read-only setu
 | Overview and reporting | `account,banking,expenses,invoices,clients,suppliers` |
 | Recording receipts and bills | `account,reference,expenses,suppliers,banking` |
 | Invoicing and credit control | `account,reference,invoices,clients,banking` |
-| Everything (default) | `all` |
+| Everything except the raw API tool (default) | `all` |
+| Everything, with the raw API tool | `all,raw` |
 
 ## Keeping the tool list small
 
-Most MCP clients send every tool's name, description and argument schema to the model with each request. With every toolset enabled that's about 31 KB for the 36 read-only tools, 71 KB for 60 tools with writes on, and 79 KB for all 70 tools with deletes and email on too. That uses up context you'd rather spend on your conversation and your accounts, so enable only the toolsets you need: the model sees fewer tools, picks the right one more easily, and can't reach the rest at all.
+Most MCP clients send every tool's name, description and argument schema to the model with each request. With `all` toolsets enabled that's about 30 KB for the 35 read-only tools, 70 KB for 59 tools with writes on, and 78 KB for all 69 tools with deletes and email on too. That uses up context you'd rather spend on your conversation and your accounts, so enable only the toolsets you need: the model sees fewer tools, picks the right one more easily, and can't reach the rest at all.
 
 Measured with `tools/list` over stdio (sizes are the JSON response, rounded to the nearest KB):
 
 | `CRUNCH_TOOLSETS` | Read-only | With writes | With deletes and email |
 |---|---|---|---|
-| `all` | 36 tools, 31 KB | 60 tools, 71 KB | 70 tools, 79 KB |
-| `account,banking,expenses,invoices,clients,suppliers` (overview and reporting) | 27 tools, 23 KB | 49 tools, 57 KB | 58 tools, 63 KB |
+| `all` | 35 tools, 30 KB | 59 tools, 70 KB | 69 tools, 78 KB |
+| `account,banking,expenses,invoices,clients,suppliers` (overview and reporting) | 27 tools, 23 KB | 49 tools, 57 KB | 58 tools, 64 KB |
 | `account,reference,expenses,suppliers,banking` (receipts and bills) | 24 tools, 20 KB | 39 tools, 41 KB | 44 tools, 45 KB |
-| `account,reference,invoices,clients,banking` (invoicing) | 27 tools, 21 KB | 43 tools, 42 KB | 49 tools, 47 KB |
+| `account,reference,invoices,clients,banking` (invoicing) | 27 tools, 21 KB | 43 tools, 43 KB | 49 tools, 47 KB |
 
 Each toolset on its own:
 

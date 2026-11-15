@@ -66,6 +66,34 @@ func (c *Context) checkReminders(raw any) error {
 	return nil
 }
 
+// checkFields applies the switches to raw fields a model passes in `extra` or `changes`:
+// with email off they must not turn on payment reminders or set a send flag such as
+// sendEmail, and on a create (create=true) they must not name an existing record with
+// `id`, which Crunch could treat as an update that replaces the record and drops its
+// payments and attachments.
+func (c *Context) checkFields(raw map[string]any, create bool) error {
+	if !c.AllowEmail {
+		if err := checkRawEmail(raw, "raw fields (extra or changes)"); err != nil {
+			return err
+		}
+	}
+	if create {
+		return checkNoID(raw, "extra field")
+	}
+	return nil
+}
+
+// checkNoID refuses a top-level id in the body of a request that creates a record.
+func checkNoID(v any, where string) error {
+	obj, _ := v.(map[string]any)
+	for k, val := range obj {
+		if strings.EqualFold(k, "id") && val != nil {
+			return fmt.Errorf("the %s sets %q, but this creates a new record and must not name an existing one; use the update tool to change a record", where, k)
+		}
+	}
+	return nil
+}
+
 // ---------------------------------------------------------------- deletes
 
 // keptLists are the lists Crunch replaces wholesale on an update, deleting any entry left out.

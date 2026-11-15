@@ -284,7 +284,7 @@ func SummarizeCreditCard(c Obj) Obj {
 	return Compact(Obj{
 		"id":                    ID(c, "id"),
 		"name":                  firstNonEmpty(Str(c, "displayName"), Str(c, "displayableName")),
-		"card_number":           Str(c, "cardNumber"),
+		"card_number":           MaskCardNumber(Str(c, "cardNumber")),
 		"balance":               Money(c, "balanceDto", "balance"),
 		"balance_date":          Str(c, "balanceDto", "date"),
 		"default":               Bool(c, "default"),
@@ -293,6 +293,26 @@ func SummarizeCreditCard(c Obj) Obj {
 		"unmatched_entries":     nonZero(Get(c, "unmatchedEntriesAmount")),
 		"unreconciled_payments": nonZero(Get(c, "unreconciledCrunchPaymentsAmount")),
 	})
+}
+
+// MaskCardNumber keeps only the last four digits of a card number, which is all a summary
+// needs to tell cards apart; a full number would otherwise sit in the model's context.
+func MaskCardNumber(s string) string {
+	var digits []rune
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			digits = append(digits, r)
+		}
+	}
+	switch {
+	case s == "":
+		return ""
+	case len(digits) <= 4 && len(digits) == len([]rune(strings.TrimSpace(s))):
+		return s // already just the last digits
+	case len(digits) < 4:
+		return "****"
+	}
+	return "**** " + string(digits[len(digits)-4:])
 }
 
 // SummarizePayment is the list view of a bank account payment.

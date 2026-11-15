@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
@@ -72,20 +73,50 @@ type Def struct {
 	// Reads, for a tool that changes things, reports whether a call's arguments only
 	// read; such calls are left out of the audit log.
 	Reads func(args map[string]any) bool
+	// Audited logs calls of a Read-gated tool that changes the server's own state rather
+	// than Crunch's (logging in), without giving it dry_run.
+	Audited bool
 }
 
-// Money is an amount given as a number (120) or a decimal string ("120.00"). It is sent to Crunch as a JSON number.
+// Money is an amount given as a number (120) or a decimal string ("120.00"), with at most
+// two decimal places. It is sent to Crunch as a JSON number.
 type Money string
 
-// UnmarshalJSON accepts numbers and decimal strings.
+var (
+	moneyRe    = regexp.MustCompile(`^-?\d+(\.\d{1,2})?$`)
+	quantityRe = regexp.MustCompile(`^-?\d+(\.\d{1,4})?$`)
+)
+
+// UnmarshalJSON accepts numbers and decimal strings in pounds and pence. Exponents and
+// fractions of a penny are refused rather than rounded, so what is sent is what was meant.
 func (m *Money) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(strings.TrimSpace(string(b)), `"`)
-	var n json.Number = json.Number(s)
-	if _, err := n.Float64(); err != nil {
-		return fmt.Errorf("%q is not an amount; use a number like 120.00", s)
+	if !moneyRe.MatchString(s) {
+		return fmt.Errorf("%q is not an amount; use a number with at most two decimal places, like 120.00", s)
 	}
 	*m = Money(s)
 	return nil
+}
+
+// Quantity is a quantity on an invoice line, with at most four decimal places.
+type Quantity string
+
+// UnmarshalJSON accepts numbers and decimal strings.
+func (q *Quantity) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(strings.TrimSpace(string(b)), `"`)
+	if !quantityRe.MatchString(s) {
+		return fmt.Errorf("%q is not a quantity; use a number with at most four decimal places, like 1.5", s)
+	}
+	*q = Quantity(s)
+	return nil
+}
+
+// MarshalJSON sends the quantity as a JSON number.
+func (q Quantity) MarshalJSON() ([]byte, error) {
+	if q == "" {
+		return []byte("null"), nil
+	}
+	return []byte(q), nil
 }
 
 // MarshalJSON sends the amount as a JSON number.
@@ -106,7 +137,8 @@ func (m Money) Float() float64 {
 type Date = string
 
 var typeSchemas = map[reflect.Type]*jsonschema.Schema{
-	reflect.TypeFor[Money](): {Types: []string{"number", "string"}, Pattern: `^-?\d+(\.\d+)?$`},
+	reflect.TypeFor[Money]():    {Types: []string{"number", "string"}, Pattern: moneyRe.String()},
+	reflect.TypeFor[Quantity](): {Types: []string{"number", "string"}, Pattern: quantityRe.String()},
 }
 
 const datePattern = `^\d{4}-\d{2}-\d{2}$`
@@ -213,6 +245,11 @@ func add[In any](c *Context, d Def, h func(ctx context.Context, in In) (any, err
 			c.guarded = map[string]guard{}
 		}
 		c.guarded[d.Name] = guard{reads: d.Reads}
+	} else if d.Audited {
+		if c.guarded == nil {
+			c.guarded = map[string]guard{}
+		}
+		c.guarded[d.Name] = guard{}
 	}
 	tool := &mcp.Tool{Name: d.Name, Title: d.Title, Description: d.Description, Annotations: ann, InputSchema: schema}
 	mcp.AddTool(c.Server, tool, func(ctx context.Context, _ *mcp.CallToolRequest, in In) (*mcp.CallToolResult, any, error) {

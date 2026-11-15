@@ -122,7 +122,7 @@ Read [Security](docs/security.md) before turning on writes for your real books.
 | `expenses` | Expenses: list and filter, totals, create with lines, payments and receipts, update, record and remove payments, attach and download receipts, delete |
 | `recurring` | Recurring expenses that Crunch creates on a schedule: list, create, pause or change, delete |
 | `invoices` | Sales invoices: list and filter, totals, create drafts, update, issue, email to the customer, record and remove payments, attachments, PDF download, delete |
-| `raw` | An escape hatch that calls any Crunch public API endpoint |
+| `raw` | An escape hatch that calls any Crunch public API endpoint. Off unless listed by name in `CRUNCH_TOOLSETS` (`all` leaves it out) |
 
 See the **[tool reference](docs/tools.md)** for every tool and argument. Ready-made prompts like `business_health_check`, `record_receipt` and `chase_overdue_invoices` chain the tools together for common jobs.
 

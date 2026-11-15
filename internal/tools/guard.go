@@ -90,6 +90,14 @@ func dryRunResult(ctx context.Context, out any, err error) (any, error) {
 		if ch, ok := preview["changes"].(Obj); ok && len(ch) == 0 {
 			note = "The request would not change any field. " + note
 		}
+		if later := call.Later(); len(later) > 0 {
+			var then []any
+			for _, l := range later {
+				then = append(then, l.Preview()["would_send"])
+			}
+			preview["then_would_send"] = then
+			note = "would_send is followed by then_would_send, which uses what the first request would create. " + note
+		}
 		preview["note"] = note
 		return preview, nil
 	}
@@ -182,8 +190,9 @@ func (l *auditLog) warn(err any) {
 	})
 }
 
-// secretKeyRe matches argument names whose values must not be logged.
-var secretKeyRe = regexp.MustCompile(`(?i)token|secret|password|verifier|authorization|^code$`)
+// secretKeyRe matches argument names whose values must not be logged: credentials (a
+// login's redirected URL carries the authorisation code) and bank and card numbers.
+var secretKeyRe = regexp.MustCompile(`(?i)token|secret|password|verifier|authorization|^code$|^state$|redirected_?url|card_?number|account_?number|sort_?code|iban`)
 
 // redact returns the arguments with secrets replaced and file contents shortened.
 func redact(v any) any {

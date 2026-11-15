@@ -30,7 +30,7 @@ var toolsetInfo = map[string]string{
 	"expenses":  "Expenses: list and filter, totals, create with lines, payments and receipts, update, record and remove payments, attach and download receipts, delete.",
 	"recurring": "Recurring expenses that Crunch creates on a schedule: list, create, pause or change, delete.",
 	"invoices":  "Sales invoices: list and filter, totals, create drafts, update, issue, email to the customer, record and remove payments, attachments, PDF download, delete.",
-	"raw":       "A raw API escape hatch for anything the other tools don't cover. It is limited to GET requests unless writes are enabled.",
+	"raw":       "A raw API escape hatch for anything the other tools don't cover. It is only enabled when listed by name in `CRUNCH_TOOLSETS` (`all` leaves it out), and is limited to GET requests unless writes are enabled.",
 }
 
 var badge = map[tools.Gate]string{tools.Read: "🟢 read", tools.Write: "🟠 write", tools.Delete: "🔴 delete", tools.Email: "🟣 email"}
@@ -171,7 +171,7 @@ func main() {
 		"| 🟠 write | `CRUNCH_ALLOW_WRITES=true` |",
 		"| 🔴 delete | `CRUNCH_ALLOW_WRITES=true` and `CRUNCH_ALLOW_DELETES=true` |",
 		"| 🟣 email | `CRUNCH_ALLOW_WRITES=true` and `CRUNCH_ALLOW_EMAIL=true` |", "",
-		"Every tool also needs its toolset to be enabled in `CRUNCH_TOOLSETS`, which enables all toolsets by default. List tools return compact summaries and take `raw: true` for the full API objects. Amounts can be given as numbers (`120`) or decimal strings (`\"120.00\"`), and dates as `YYYY-MM-DD`.", "",
+		"Every tool also needs its toolset to be enabled in `CRUNCH_TOOLSETS`, which enables every toolset except `raw` by default (list `raw` by name to add it). List tools return compact summaries and take `raw: true` for the full API objects. Amounts can be given as numbers (`120`) or decimal strings (`\"120.00\"`) with at most two decimal places, and dates as `YYYY-MM-DD`.", "",
 		"## Contents", "")
 	for _, ts := range config.Toolsets {
 		w(fmt.Sprintf("- [`%s`](#%s): %s", ts, ts, toolsetInfo[ts]))

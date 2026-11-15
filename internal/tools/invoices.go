@@ -13,11 +13,11 @@ const maxInvoiceAttachments = 5
 
 // InvoiceItem is one line of a sales invoice.
 type InvoiceItem struct {
-	Description  string `json:"description" jsonschema:"What was sold, for example Consulting services"`
-	PriceExclVAT Money  `json:"price_excl_vat" jsonschema:"Unit price before VAT, for example 100.00"`
-	Quantity     Money  `json:"quantity,omitempty" jsonschema:"Quantity (default 1)"`
-	VATRate      string `json:"vat_rate" jsonschema:"VAT type display name, for example Standard or Outside the Scope (see crunch_list_vat_types for=invoices)"`
-	LineType     string `json:"line_type,omitempty" jsonschema:"Crunch's lineType (default S)"`
+	Description  string   `json:"description" jsonschema:"What was sold, for example Consulting services"`
+	PriceExclVAT Money    `json:"price_excl_vat" jsonschema:"Unit price before VAT, for example 100.00"`
+	Quantity     Quantity `json:"quantity,omitempty" jsonschema:"Quantity (default 1), up to four decimal places"`
+	VATRate      string   `json:"vat_rate" jsonschema:"VAT type display name, for example Standard or Outside the Scope (see crunch_list_vat_types for=invoices)"`
+	LineType     string   `json:"line_type,omitempty" jsonschema:"Crunch's lineType (default S)"`
 }
 
 func (it InvoiceItem) body() Obj {
@@ -337,7 +337,7 @@ func registerInvoices(c *Context) {
 		if a.SendReminders != nil && *a.SendReminders && !c.AllowEmail {
 			return nil, errors.New(remindersDisabled)
 		}
-		if err := c.checkReminders(a.Extra); err != nil {
+		if err := c.checkFields(a.Extra, true); err != nil {
 			return nil, err
 		}
 		lineType := a.LineItemType
@@ -380,7 +380,7 @@ func registerInvoices(c *Context) {
 		if a.SendReminders != nil && *a.SendReminders && !c.AllowEmail {
 			return nil, errors.New(remindersDisabled)
 		}
-		if err := c.checkReminders(a.Changes); err != nil {
+		if err := c.checkFields(a.Changes, false); err != nil {
 			return nil, err
 		}
 		current, err := getInvoice(ctx, a.InvoiceID)

@@ -14,7 +14,7 @@ This page is for people working on crunch-mcp itself. Start with [CONTRIBUTING.m
 
 ## Setup
 
-You need Go 1.25 or later, and Docker for building the image.
+You need Go 1.26 or later, and Docker for building the image.
 
 ```sh
 git clone https://github.com/mattoddie/crunch-mcp.git
@@ -113,7 +113,7 @@ The input struct **is** the tool's argument schema:
 - `omitempty` makes it optional. Without it, the argument is required.
 - The `jsonschema` tag is the argument's description, which the model reads. Every argument needs one, and a test checks this.
 - Use pointers (`*int`, `*bool`, `*string`) for optional values where zero means something, so "not given" and "set to zero" differ.
-- `Money` takes an amount as a number (`120`) or a decimal string (`"120.00"`) and sends it to Crunch as an exact JSON number. Use it for every amount.
+- `Money` takes an amount as a number (`120`) or a decimal string (`"120.00"`), with at most two decimal places and no exponent, and sends it to Crunch as an exact JSON number. Use it for every amount. `Quantity` is the same with up to four decimal places, for invoice line quantities.
 - `Date` is a `YYYY-MM-DD` string. Any string argument named `date`, `*_date` or `date_*` gets a date pattern in its schema automatically.
 - Embedded structs, such as `PageArgs` or `clientFields` above, add their fields to the tool.
 - Tools without arguments take `NoArgs`.
@@ -130,6 +130,7 @@ The input struct **is** the tool's argument schema:
 | `Idempotent` | Repeating the call with the same arguments has no further effect. Sets `idempotentHint`. |
 | `OpenWorld` | The tool reaches outside Crunch, such as emailing a customer. Sets `openWorldHint`. |
 | `Enums` | Restricts string arguments to fixed values, keyed by argument name, for example `{"for": {"expenses", "invoices"}}`. |
+| `Audited` | For a `Read`-gated tool that changes the server's own state, such as logging in: its calls go in the audit log, without a `dry_run` argument. |
 | `Writes`, `Reads` | For a `Read`-gated tool that can still change things (the raw API tool with writes on): `Writes` gives it `dry_run` and audit logging like a write tool, and `Reads(args)` reports which calls only read, so they stay out of the audit log. Tools with any other gate get `dry_run` and audit logging automatically. |
 
 ### Helpers
@@ -144,7 +145,7 @@ The input struct **is** the tool's argument schema:
 | `ref()` | Turn an optional ID into Crunch's `{"id": …}` reference. |
 | `Attachment` and `attachmentsBody()` | Uploads from base64, a `data:` URI or a file path, sent as the `data:` URIs Crunch requires. |
 | `fileResult()` | Downloads: images inline, other files as embedded resources, and `save_to` without overwriting. |
-| `guards.go` | Checks that apply the switches inside request bodies: `checkReminders()` (payment reminders need email), `checkKeepsEntries()` (updates keep payments and attachments without deletes), and `readLocalFile()`/`saveLocalFile()` (files stay inside `CRUNCH_FILES_DIR`). Use them in any new tool that takes raw fields, updates a record with payments or attachments, or touches local files. |
+| `guards.go` | Checks that apply the switches inside request bodies: `checkFields()` (raw `extra` and `changes` fields: no reminders or send flags without email, and no `id` on a create), `checkReminders()` (payment reminders need email), `checkKeepsEntries()` (updates keep payments and attachments without deletes), and `readLocalFile()`/`saveLocalFile()` (files stay inside `CRUNCH_FILES_DIR`). Use them in any new tool that takes raw fields, updates a record with payments or attachments, or touches local files. |
 
 ### Checklist for a new tool
 

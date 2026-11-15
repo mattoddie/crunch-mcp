@@ -113,6 +113,12 @@ func (s SupplierRef) resolve(ctx context.Context, cl *crunch.Client, expenseType
 	}
 	var created Obj
 	if err := cl.Post(ctx, "/expenses/suppliers", nil, body, &created); err != nil {
+		var dry *crunch.DryRunError
+		if errors.As(err, &dry) {
+			// A dry run carries on, so the preview shows the expense too; the new
+			// supplier's id isn't known yet.
+			return Obj{"id": nil, "companyName": s.SupplierName}, nil
+		}
 		return nil, err
 	}
 	return Obj{"id": created["id"]}, nil
@@ -130,11 +136,13 @@ func (in ExpenseInput) body(ctx context.Context, cl *crunch.Client, postingDate 
 	if len(in.LineItems) == 0 {
 		return nil, errors.New("give at least one line item")
 	}
-	supplier, err := in.resolve(ctx, cl, in.LineItems[0].ExpenseType)
+	// Lines (and their default VAT types) are checked before the supplier is resolved,
+	// so a bad line doesn't leave behind a supplier created for an expense that fails.
+	lines, err := lineItemsBody(ctx, cl, in.LineItems)
 	if err != nil {
 		return nil, err
 	}
-	lines, err := lineItemsBody(ctx, cl, in.LineItems)
+	supplier, err := in.resolve(ctx, cl, in.LineItems[0].ExpenseType)
 	if err != nil {
 		return nil, err
 	}
@@ -324,6 +332,9 @@ func registerExpenses(c *Context) {
 			"Look up valid values first: crunch_list_expense_types, crunch_list_vat_types, crunch_list_payment_methods, crunch_list_bank_accounts. The date must be in an open accounting period.",
 		Gate: Write,
 	}, func(ctx context.Context, a createExpenseArgs) (any, error) {
+		if err := c.checkFields(a.Extra, true); err != nil {
+			return nil, err
+		}
 		body, err := a.body(ctx, cl, a.PostingDate)
 		if err != nil {
 			return nil, err
@@ -353,6 +364,9 @@ func registerExpenses(c *Context) {
 			"Payments and attachments are kept as they are; use crunch_add_expense_payment, crunch_remove_expense_payment and crunch_add_expense_attachment for those. Reconciled expenses and closed years can't be changed.",
 		Gate: Write, Idempotent: true,
 	}, func(ctx context.Context, a updateExpenseArgs) (any, error) {
+		if err := c.checkFields(a.Changes, false); err != nil {
+			return nil, err
+		}
 		current, err := getExpense(ctx, a.ExpenseID)
 		if err != nil {
 			return nil, err

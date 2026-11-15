@@ -87,6 +87,9 @@ func registerRecurring(c *Context) {
 			"Schedule values are Crunch's own; look at an existing one with crunch_get_recurring_expense if you're unsure of the names.",
 		Gate: Write,
 	}, func(ctx context.Context, a createRecurringArgs) (any, error) {
+		if err := c.checkFields(a.Extra, true); err != nil {
+			return nil, err
+		}
 		date := a.PostingDate
 		if date == "" {
 			date = a.Recurrence.NextOccurrenceDate
@@ -108,6 +111,9 @@ func registerRecurring(c *Context) {
 		Description: "Change a recurring expense: its lines, its schedule (for example pause it with enabled=false, or change the next or end date), or any field via `changes`. Only what you pass changes. Expenses already created aren't affected.",
 		Gate:        Write, Idempotent: true,
 	}, func(ctx context.Context, a updateRecurringArgs) (any, error) {
+		if err := c.checkFields(a.Changes, false); err != nil {
+			return nil, err
+		}
 		p := path("/expenses/recurring-expenses/%d", a.RecurringExpenseID)
 		var current Obj
 		if err := cl.Get(ctx, p, nil, &current); err != nil {
