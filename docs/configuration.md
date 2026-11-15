@@ -231,6 +231,7 @@ Every tool's name, description and argument schema is sent to the model, which u
 | `expenses` | Expenses, payments and receipts |
 | `recurring` | Recurring expenses |
 | `invoices` | Sales invoices, payments received, PDFs |
+| `reports` | Read-only reports: aged debtors and creditors |
 | `raw` | Any API path. Handy, but gives broad access, so `all` leaves it out: list it by name (`all,raw`) to turn it on. |
 
 The [tool reference](tools.md) lists the tools in each toolset. A read-only setup registers about half the tools. Some suggested sets:
@@ -245,13 +246,13 @@ The [tool reference](tools.md) lists the tools in each toolset. A read-only setu
 
 ## Keeping the tool list small
 
-Most MCP clients send every tool's name, description and argument schema to the model with each request. With `all` toolsets enabled that's about 30 KB for the 35 read-only tools, 70 KB for 59 tools with writes on, and 78 KB for all 69 tools with deletes and email on too. That uses up context you'd rather spend on your conversation and your accounts, so enable only the toolsets you need: the model sees fewer tools, picks the right one more easily, and can't reach the rest at all.
+Most MCP clients send every tool's name, description and argument schema to the model with each request. With `all` toolsets enabled that's about 31 KB for the 37 read-only tools, 72 KB for 61 tools with writes on, and 80 KB for all 71 tools with deletes and email on too. That uses up context you'd rather spend on your conversation and your accounts, so enable only the toolsets you need: the model sees fewer tools, picks the right one more easily, and can't reach the rest at all.
 
 Measured with `tools/list` over stdio (sizes are the JSON response, rounded to the nearest KB):
 
 | `CRUNCH_TOOLSETS` | Read-only | With writes | With deletes and email |
 |---|---|---|---|
-| `all` | 35 tools, 30 KB | 59 tools, 70 KB | 69 tools, 78 KB |
+| `all` | 37 tools, 31 KB | 61 tools, 72 KB | 71 tools, 80 KB |
 | `account,banking,expenses,invoices,clients,suppliers` (overview and reporting) | 27 tools, 23 KB | 49 tools, 57 KB | 58 tools, 64 KB |
 | `account,reference,expenses,suppliers,banking` (receipts and bills) | 24 tools, 20 KB | 39 tools, 41 KB | 44 tools, 45 KB |
 | `account,reference,invoices,clients,banking` (invoicing) | 27 tools, 21 KB | 43 tools, 43 KB | 49 tools, 47 KB |
@@ -268,6 +269,7 @@ Each toolset on its own:
 | `expenses` | 4 tools, 6 KB | 10 tools, 17 KB |
 | `recurring` | 2 tools, 2 KB | 5 tools, 9 KB |
 | `invoices` | 7 tools, 6 KB | 15 tools, 18 KB |
+| `reports` | 2 tools, 2 KB | 2 tools, 2 KB |
 | `raw` | 1 tool, 1 KB | 1 tool, 1 KB |
 
 Clients with their own tool search, such as Claude Code, load tool definitions only when the model needs them, so they handle the full list fine. You don't need to narrow `CRUNCH_TOOLSETS` for them, though it still limits what the model can reach.

@@ -90,7 +90,7 @@ To update, install the bundle from a newer release the same way.
 | **Allow changes** | `CRUNCH_ALLOW_WRITES` | Off by default, which keeps the assistant read-only. Read [Security](security.md) before turning it on, and log in again afterwards so the login includes the extra scopes. |
 | **Allow deletes** | `CRUNCH_ALLOW_DELETES` | Also allows deleting records and removing payments. Needs **Allow changes**. |
 | **Allow emailing customers** | `CRUNCH_ALLOW_EMAIL` | Also allows emailing invoices and turning on payment reminders. Needs **Allow changes**. |
-| **Toolsets** | `CRUNCH_TOOLSETS` | Optional, such as `account,reference,expenses,suppliers,banking`. Empty means all except `raw`, which is 30 KB of the model's context read-only and up to 78 KB with everything allowed. List `raw` by name (`all,raw`) to add the raw API tool. See [Keeping the tool list small](configuration.md#keeping-the-tool-list-small). |
+| **Toolsets** | `CRUNCH_TOOLSETS` | Optional, such as `account,reference,expenses,suppliers,banking`. Empty means all except `raw`, which is 31 KB of the model's context read-only and up to 80 KB with everything allowed. List `raw` by name (`all,raw`) to add the raw API tool. See [Keeping the tool list small](configuration.md#keeping-the-tool-list-small). |
 | **Files folder** | `CRUNCH_FILES_DIR` | Optional folder Claude may read receipts from (`file_path`) and save downloads to (`save_to`). Off when empty. |
 | **Audit log file** | `CRUNCH_AUDIT_LOG` | Optional full path to a file, such as `/Users/you/crunch-mcp-audit.jsonl`, that records every change Claude makes or previews. The folder must exist; the file is created. `stderr` writes the entries to the extension's log instead. Off when empty. See [Audit log](configuration.md#audit-log). |
 

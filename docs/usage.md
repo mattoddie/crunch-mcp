@@ -22,7 +22,7 @@ Once the server is connected and logged in, just talk to your assistant about yo
 
 **Invoices and customers**
 
-- *"Which invoices are unpaid? Which are overdue, and by how long?"*
+- *"Which invoices are unpaid? Which are overdue, and by how long?"* (`crunch_get_aged_debtors`)
 - *"How much have I invoiced Example Client Ltd this year?"* (`crunch_get_invoice_totals`)
 - *"Show me invoice 1234 and download the PDF."*
 - *"Example Client Ltd paid INV-0042 in full yesterday. Record the payment."* (writes)
@@ -31,7 +31,7 @@ Once the server is connected and logged in, just talk to your assistant about yo
 
 - *"What did I spend on travel this tax year?"* (`crunch_get_expenses_total`)
 - *"Which expenses since April have no receipt attached?"*
-- *"Are there any bills I haven't paid yet?"*
+- *"Are there any bills I haven't paid yet, and how old are they?"* (`crunch_get_aged_creditors`)
 - *"Show me the receipt for the Example Hosting expense in August."* (`crunch_download_expense_attachment`)
 - *"Record this receipt."* with a photo attached (writes)
 

@@ -44,6 +44,7 @@ func NewServer(client *crunch.Client, opts config.Tools, registered map[string]I
 	registerExpenses(c)
 	registerRecurring(c)
 	registerInvoices(c)
+	registerReports(c)
 	registerRaw(c)
 	registerPrompts(s)
 	return s

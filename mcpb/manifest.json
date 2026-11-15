@@ -69,6 +69,14 @@
       "description": "Download a sales invoice as a PDF, as Crunch renders it for the customer. Returned as an embedded resource; use save_to to also write it to disk (when the server sets CRUNCH_FILES_DIR)."
     },
     {
+      "name": "crunch_get_aged_creditors",
+      "description": "What the business owes suppliers and for how long: the outstanding balance of every unpaid or part-paid expense, grouped by age (0-30, 31-60, 61-90 and over 90 days since the expense date, since Crunch's expenses have no due date) and by supplier, largest first. Reads every expense up to the report date, so it can take a few seconds on a large account. details=true also lists each expense."
+    },
+    {
+      "name": "crunch_get_aged_debtors",
+      "description": "Who owes the business money and for how long: the outstanding balance of every issued sales invoice, grouped by days past its due date (current, 1-30, 31-60, 61-90 and over 90 days) and by customer, largest first. Drafts are left out. Reads every invoice, so it can take a few seconds on a large account. details=true also lists each invoice."
+    },
+    {
       "name": "crunch_get_bank_account",
       "description": "Get one bank account in full: balance, account details, bank feed, unmatched statement entries and whether it can be edited, archived or deleted."
     },
