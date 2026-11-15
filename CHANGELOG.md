@@ -6,6 +6,10 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-15
+
+crunch-mcp now has 74 tools in 10 toolsets, and 6 prompts. This release has breaking changes: see **Changed**.
+
 ### Added
 
 - `CRUNCH_RAW_ALLOW` limits the raw API tool to a list of path prefixes, such as `/expenses,/invoices`, and `CRUNCH_RAW_READ_ONLY=true` keeps it to `GET` requests even when writes are on. Both are in the Claude Desktop extension's settings and the MCP Registry entry.
@@ -147,7 +151,8 @@ First release. It hasn't yet been tested against a live Crunch account, so expec
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code.
 
-[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.3.0...v0.4.0
