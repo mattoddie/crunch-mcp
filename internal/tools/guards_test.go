@@ -323,3 +323,32 @@ func TestRawEmailAndDeleteChecksCoverQueryAndPost(t *testing.T) {
 	env.call("crunch_api_request", map[string]any{"path": "/clients/list", "query": map[string]any{"email": "sam@example.com"}})
 	env.call("crunch_api_request", map[string]any{"method": "POST", "path": "/clients", "body": map[string]any{"name": "Example Ltd", "email": "sam@example.com", "sendReminders": false}})
 }
+
+// CRUNCH_RAW_ALLOW limits the raw tool to path prefixes, and CRUNCH_RAW_READ_ONLY keeps it to reading.
+func TestRawAllowAndReadOnly(t *testing.T) {
+	o := config.AllTools()
+	o.RawAllow, o.RawReadOnly = []string{"/expenses", "/clients"}, true
+	env := newEnv(t, o)
+	env.mock.On("GET", "/expenses/vat-types", crunchtest.JSON([]any{}))
+	env.call("crunch_api_request", map[string]any{"path": "/v1/expenses/vat-types"})
+	for _, p := range []string{"/banking/bank-accounts", "/expenses-x", "/invoices/1"} {
+		if msg := env.callErr("crunch_api_request", map[string]any{"path": p}); !strings.Contains(msg, "CRUNCH_RAW_ALLOW") {
+			t.Errorf("%s: %s", p, msg)
+		}
+	}
+	for _, m := range []string{"POST", "PUT", "DELETE"} {
+		if msg := env.callErr("crunch_api_request", map[string]any{"method": m, "path": "/clients/1", "body": map[string]any{}}); !strings.Contains(msg, "CRUNCH_RAW_READ_ONLY") {
+			t.Errorf("%s: %s", m, msg)
+		}
+	}
+	if len(env.writesSent()) != 0 {
+		t.Fatalf("sent %v", env.writesSent())
+	}
+	tool := toolNames(t, env.session)["crunch_api_request"]
+	if _, has := tool.InputSchema.(map[string]any)["properties"].(map[string]any)["dry_run"]; has || !tool.Annotations.ReadOnlyHint {
+		t.Error("a read-only raw tool should be annotated read-only, without dry_run")
+	}
+	if !strings.Contains(tool.Description, "/expenses, /clients") || !strings.Contains(tool.Description, "CRUNCH_RAW_READ_ONLY") {
+		t.Errorf("description: %s", tool.Description)
+	}
+}

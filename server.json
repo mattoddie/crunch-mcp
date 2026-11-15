@@ -74,6 +74,16 @@
           "description": "Optional comma-separated toolsets, e.g. account,reference,expenses. Empty means all but raw (list raw by name)."
         },
         {
+          "name": "CRUNCH_RAW_ALLOW",
+          "description": "Optional comma-separated path prefixes the raw API tool may use, e.g. /expenses. Empty allows all."
+        },
+        {
+          "name": "CRUNCH_RAW_READ_ONLY",
+          "description": "Keep the raw API tool to GET requests even when CRUNCH_ALLOW_WRITES is on.",
+          "format": "boolean",
+          "default": "false"
+        },
+        {
           "name": "CRUNCH_FILES_DIR",
           "description": "Optional folder, inside the container, for receipts to attach and files to save. Mount it too. Empty turns it off."
         },

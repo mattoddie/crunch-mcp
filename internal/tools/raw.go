@@ -87,16 +87,23 @@ func cleanRawPath(p string) (string, string, error) {
 
 func registerRaw(c *Context) {
 	cl := c.Client
+	// The raw tool writes only when writes are on and CRUNCH_RAW_READ_ONLY doesn't hold it back.
+	writes := c.AllowWrites && !c.RawReadOnly
 	desc := "Call any Crunch public API endpoint directly, for anything the other tools don't cover. `path` is relative to the API root and starts with the service: /banking, /clients, /company-details, /expenses, /immutable-data, /invoices or /user-details. "
+	if len(c.RawAllow) > 0 {
+		desc += "Only paths under " + strings.Join(c.RawAllow, ", ") + " are allowed (CRUNCH_RAW_ALLOW). "
+	}
 	switch {
 	case !c.AllowWrites:
 		desc += "Only GET is allowed because write access is disabled (CRUNCH_ALLOW_WRITES=false)."
+	case c.RawReadOnly:
+		desc += "Only GET is allowed because this tool is read-only (CRUNCH_RAW_READ_ONLY=true); use the other tools to change records."
 	case c.AllowDeletes:
 		desc += "All HTTP methods are allowed."
 	default:
 		desc += "DELETE is not allowed because delete access is disabled (CRUNCH_ALLOW_DELETES=false), and a PUT must keep the record's existing payments and attachments."
 	}
-	if c.AllowWrites {
+	if writes {
 		desc += " Writes only go to the write endpoints of Crunch's documented public API (such as POST /invoices or PUT /expenses/{id}), and a POST that creates a record must not include an id."
 	}
 	if !c.AllowEmail {
@@ -105,9 +112,9 @@ func registerRaw(c *Context) {
 	add(c, Def{
 		Toolset: "raw", Name: "crunch_api_request", Title: "Raw Crunch API request",
 		Description: desc,
-		ReadOnly:    boolPtr(!c.AllowWrites), Destructive: boolPtr(c.AllowWrites),
+		ReadOnly:    boolPtr(!writes), Destructive: boolPtr(writes),
 		Enums:  map[string][]string{"method": {"GET", "POST", "PUT", "DELETE"}},
-		Writes: c.AllowWrites, Reads: rawReads,
+		Writes: writes, Reads: rawReads,
 	}, func(ctx context.Context, a rawRequestArgs) (any, error) {
 		method := strings.ToUpper(a.Method)
 		if method == "" {
@@ -117,11 +124,16 @@ func registerRaw(c *Context) {
 		if err != nil {
 			return nil, err
 		}
+		if !c.RawAllowed(canon) {
+			return nil, fmt.Errorf("%s is outside the paths this tool may use (CRUNCH_RAW_ALLOW=%s)", p, strings.Join(c.RawAllow, ","))
+		}
 		switch {
 		case method == "GET":
 		case method == "POST" && crunch.IsReadOnlyPost(canon):
 		case !c.AllowWrites:
 			return nil, errors.New("write access is disabled. Set CRUNCH_ALLOW_WRITES=true to allow non-GET requests")
+		case c.RawReadOnly:
+			return nil, errors.New("this tool is read-only (CRUNCH_RAW_READ_ONLY=true), so it only sends GET requests; use the other tools to change records")
 		case method == "DELETE" && !c.AllowDeletes:
 			return nil, errors.New("delete access is disabled. Set CRUNCH_ALLOW_DELETES=true to allow DELETE requests")
 		case method != "POST" && method != "PUT" && method != "DELETE":
