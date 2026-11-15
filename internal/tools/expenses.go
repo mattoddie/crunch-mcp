@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/mattoddie/crunch-mcp/internal/crunch"
@@ -194,6 +195,8 @@ type createExpenseArgs struct {
 	Payments    []Payment      `json:"payments,omitempty" jsonschema:"How it was paid; leave out to record it as unpaid"`
 	Attachments []Attachment   `json:"attachments,omitempty" jsonschema:"Receipts or invoices to attach"`
 	Extra       map[string]any `json:"extra,omitempty" jsonschema:"Additional raw ExpenseDto fields, using Crunch's own field names (advanced). Merged last."`
+	// Crunch has no idempotency key, so a retried or repeated call would record the expense twice.
+	AllowDuplicate bool `json:"allow_duplicate,omitempty" jsonschema:"Create the expense even if one with the same supplier, date, gross amount and supplier reference already exists (default false: refuse, and name the existing expense)"`
 }
 
 type updateExpenseArgs struct {
@@ -279,6 +282,42 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+// pence converts an amount to whole pence, so amounts compare exactly.
+func pence(f float64) int64 { return int64(math.Round(f * 100)) }
+
+// checkDuplicateExpense refuses an expense when the supplier already has one on the same
+// date with the same gross amount and supplier reference. Crunch has no idempotency key, so
+// a repeated or retried call would otherwise record the purchase twice.
+func checkDuplicateExpense(ctx context.Context, cl *crunch.Client, body Obj, lines []LineItem) error {
+	supplierID := crunch.Get(body, "supplier", "id")
+	date, _ := body["postingDate"].(string)
+	if supplierID == nil || date == "" {
+		return nil // a supplier that doesn't exist yet has no expenses
+	}
+	var gross int64
+	for _, l := range lines {
+		gross += pence(l.GrossAmount.Float())
+	}
+	ref := strings.TrimSpace(crunch.Str(body, "supplierReference"))
+	var res Obj
+	q := crunch.Query{"supplierId": fmt.Sprint(supplierID), "startDate": date, "endDate": date, "page": 0, "size": 200}
+	if err := cl.Get(ctx, "/expenses", q, &res); err != nil {
+		return fmt.Errorf("could not check for an existing copy of this expense (%w); pass allow_duplicate=true to create it without the check", err)
+	}
+	var ids []string
+	for _, e := range crunch.List(res, "content") {
+		g, _ := crunch.Num(e, "amount", "grossAmount")
+		if crunch.Str(e, "postingDate") == date && fmt.Sprint(crunch.Get(e, "supplier", "id")) == fmt.Sprint(supplierID) &&
+			pence(g) == gross && strings.EqualFold(strings.TrimSpace(crunch.Str(e, "supplierReference")), ref) {
+			ids = append(ids, crunch.Str(e, "id"))
+		}
+	}
+	if len(ids) > 0 {
+		return fmt.Errorf("this looks like a duplicate: expense %s already has the same supplier, date (%s), gross amount (%.2f) and supplier reference. Check it with crunch_get_expense; if this really is a separate purchase, call again with allow_duplicate=true", strings.Join(ids, ", "), date, float64(gross)/100)
+	}
+	return nil
+}
+
 func registerExpenses(c *Context) {
 	cl := c.Client
 
@@ -329,7 +368,8 @@ func registerExpenses(c *Context) {
 	add(c, Def{
 		Toolset: "expenses", Name: "crunch_create_expense", Title: "Create expense",
 		Description: "Record an expense: who it was from, the date, one or more lines (expense type, VAT type, gross amount), and optionally how it was paid and the receipt. " +
-			"Look up valid values first: crunch_list_expense_types, crunch_list_vat_types, crunch_list_payment_methods, crunch_list_bank_accounts. The date must be in an open accounting period.",
+			"Look up valid values first: crunch_list_expense_types, crunch_list_vat_types, crunch_list_payment_methods, crunch_list_bank_accounts. The date must be in an open accounting period. " +
+			"Refuses an expense that matches an existing one (same supplier, date, gross amount and supplier reference) unless allow_duplicate=true.",
 		Gate: Write,
 	}, func(ctx context.Context, a createExpenseArgs) (any, error) {
 		if err := c.checkFields(a.Extra, true); err != nil {
@@ -345,6 +385,11 @@ func registerExpenses(c *Context) {
 				payments = append(payments, p.body())
 			}
 			body["supplierPayments"] = payments
+		}
+		if !a.AllowDuplicate {
+			if err := checkDuplicateExpense(ctx, cl, body, a.LineItems); err != nil {
+				return nil, err
+			}
 		}
 		if len(a.Attachments) > 0 {
 			if body["attachments"], err = attachmentsBody(c, a.Attachments, 0); err != nil {

@@ -61,6 +61,7 @@ func TestDryRunUpdateShowsChangedFields(t *testing.T) {
 
 func TestDryRunCreateShowsBody(t *testing.T) {
 	env := newEnv(t)
+	env.mock.On("GET", "/expenses", crunchtest.JSON(Obj{"content": []any{}}))
 	big := strings.Repeat("QUJD", 200)
 	env.mock.On("GET", "/expenses/expense-types/all", crunchtest.JSON(expenseTypesFixture()))
 	res := env.obj("crunch_create_expense", map[string]any{

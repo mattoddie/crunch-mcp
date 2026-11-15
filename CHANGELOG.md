@@ -6,6 +6,10 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+### Added
+
+- `crunch_create_expense` refuses an expense that matches an existing one (same supplier, date, gross amount and supplier reference) and names it, because Crunch has no idempotency key and a repeated call would record the purchase twice. Pass the new `allow_duplicate: true` to create it anyway.
+
 ### Changed
 
 - **Breaking:** `CRUNCH_TOOLSETS=all`, the default, no longer includes the `raw` toolset. The raw API tool (`crunch_api_request`) reaches endpoints the curated tools gate more finely, so it's only enabled when listed by name, for example `CRUNCH_TOOLSETS=all,raw`.

@@ -662,7 +662,7 @@ Record that an expense was paid (fully or partly): date, amount, payment method 
 
 🟠 write
 
-Record an expense: who it was from, the date, one or more lines (expense type, VAT type, gross amount), and optionally how it was paid and the receipt. Look up valid values first: crunch_list_expense_types, crunch_list_vat_types, crunch_list_payment_methods, crunch_list_bank_accounts. The date must be in an open accounting period.
+Record an expense: who it was from, the date, one or more lines (expense type, VAT type, gross amount), and optionally how it was paid and the receipt. Look up valid values first: crunch_list_expense_types, crunch_list_vat_types, crunch_list_payment_methods, crunch_list_bank_accounts. The date must be in an open accounting period. Refuses an expense that matches an existing one (same supplier, date, gross amount and supplier reference) unless allow_duplicate=true.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
@@ -675,6 +675,7 @@ Record an expense: who it was from, the date, one or more lines (expense type, V
 | `line_items[].vat_amount` | number \| string |  | VAT amount (normally worked out by Crunch from the VAT type) |
 | `line_items[].vat_type` | string |  | VAT type display name, for example Standard, Exempt or Outside the Scope (see crunch_list_vat_types). Defaults to the expense type's default VAT type. |
 | `posting_date` | string | yes | Date of the expense or receipt (YYYY-MM-DD); must be in an open accounting period |
+| `allow_duplicate` | boolean |  | Create the expense even if one with the same supplier, date, gross amount and supplier reference already exists (default false: refuse, and name the existing expense) |
 | `attachments` | object[] |  | Receipts or invoices to attach |
 | `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
