@@ -165,6 +165,10 @@
       "description": "List the business's credit cards with their balances, default flag and unmatched statement entries."
     },
     {
+      "name": "crunch_list_credit_notes",
+      "description": "List credit notes: those issued against your sales invoices (for=invoices, the default), those from suppliers against expenses (for=expenses), or both (for=all), newest first, with the invoice or expense they belong to, amount, state and refunds. Crunch's public API can't create credit notes; do that in the Crunch app. Reads the invoices that have credits one by one, so it can take a few seconds."
+    },
+    {
       "name": "crunch_list_expense_types",
       "description": "List the expense types (categories) Crunch accepts in expenseType fields, for example ACCOUNTANCY, TELEPHONE or TRAVEL_AND_SUBSISTENCE, grouped as in Crunch, with each type's default VAT type. Use the `name` values when creating expenses and suppliers."
     },
