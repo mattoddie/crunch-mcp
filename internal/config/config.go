@@ -15,7 +15,7 @@ import (
 )
 
 // Toolsets are groups of tools that can be switched on and off with CRUNCH_TOOLSETS.
-var Toolsets = []string{"account", "reference", "banking", "clients", "suppliers", "expenses", "recurring", "invoices", "raw"}
+var Toolsets = []string{"account", "reference", "banking", "clients", "suppliers", "expenses", "recurring", "invoices", "reports", "raw"}
 
 // OptInToolsets are left out of "all" (and so of the default) and must be listed by name. The
 // raw API tool reaches endpoints the curated tools gate more finely, so it is never enabled
