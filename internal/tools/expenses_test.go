@@ -61,6 +61,7 @@ func TestListExpensesPagesAndSummarises(t *testing.T) {
 
 func TestCreateExpenseBuildsBody(t *testing.T) {
 	env := newEnv(t)
+	env.mock.On("GET", "/expenses", crunchtest.JSON(Obj{"content": []any{}}))
 	env.mock.On("GET", "/expenses/expense-types/all", crunchtest.JSON(expenseTypesFixture()))
 	env.mock.On("GET", "/expenses/suppliers", crunchtest.JSON(Obj{"content": []any{Obj{"id": 5, "companyName": "Example Supplier Ltd"}}}))
 	img := base64.StdEncoding.EncodeToString([]byte("fake jpeg"))
@@ -93,6 +94,7 @@ func TestCreateExpenseBuildsBody(t *testing.T) {
 
 func TestCreateExpenseSupplierResolution(t *testing.T) {
 	env := newEnv(t)
+	env.mock.On("GET", "/expenses", crunchtest.JSON(Obj{"content": []any{}}))
 	env.mock.On("GET", "/expenses/suppliers", crunchtest.JSON(Obj{"content": []any{}}))
 	args := map[string]any{"supplier_name": "New Co", "posting_date": "2026-09-14", "line_items": []any{map[string]any{"expense_type": "TELEPHONE", "vat_type": "Standard", "gross_amount": 10}}}
 	if msg := env.callErr("crunch_create_expense", args); !strings.Contains(msg, "create_supplier=true") {
@@ -231,5 +233,41 @@ func TestMaxItemsIsCapped(t *testing.T) {
 	res := env.obj("crunch_list_expenses", map[string]any{"all": true, "max_items": 1000000})
 	if num(res["returned"]) != 10000 || res["truncated"] != true {
 		t.Errorf("returned %v, truncated %v", res["returned"], res["truncated"])
+	}
+}
+
+// Crunch has no idempotency key, so a repeated create is refused unless allow_duplicate is set.
+func TestCreateExpenseRefusesDuplicates(t *testing.T) {
+	env := newEnv(t)
+	env.mock.On("GET", "/expenses", func(r crunchtest.Request, _ []string) (int, any) {
+		if r.Query.Get("supplierId") != "5" || r.Query.Get("startDate") != "2026-09-14" || r.Query.Get("endDate") != "2026-09-14" {
+			return 200, Obj{"content": []any{}}
+		}
+		return 200, Obj{"content": []any{jsonObj(t, expenseFixture)}}
+	})
+	args := func(gross any, ref string, extra ...any) map[string]any {
+		a := map[string]any{"supplier_id": 5, "posting_date": "2026-09-14", "supplier_reference": ref,
+			"line_items": []any{map[string]any{"expense_type": "ACCOUNTANCY", "vat_type": "Standard", "gross_amount": gross}}}
+		for i := 0; i+1 < len(extra); i += 2 {
+			a[extra[i].(string)] = extra[i+1]
+		}
+		return a
+	}
+	// Same supplier, date, gross (120.00 as "120") and reference (case and spaces ignored).
+	if msg := env.callErr("crunch_create_expense", args("120", " inv-9 ")); !strings.Contains(msg, "expense 77") || !strings.Contains(msg, "allow_duplicate=true") {
+		t.Errorf("duplicate: %s", msg)
+	}
+	if len(env.writesSent()) != 0 {
+		t.Fatalf("a duplicate was sent: %v", env.writesSent())
+	}
+	// A different amount or reference, another date, or allow_duplicate, goes through.
+	env.call("crunch_create_expense", args("120.01", "INV-9"))
+	env.call("crunch_create_expense", args(120, "INV-10"))
+	a := args(120, "INV-9")
+	a["posting_date"] = "2026-09-15"
+	env.call("crunch_create_expense", a)
+	env.call("crunch_create_expense", args(120, "INV-9", "allow_duplicate", true))
+	if n := len(env.writesSent()); n != 4 {
+		t.Errorf("sent %d expenses, want 4", n)
 	}
 }

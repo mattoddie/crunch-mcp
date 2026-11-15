@@ -65,6 +65,8 @@ These show the kind of back-and-forth to expect for a small UK limited company o
 
 Behind the scenes the assistant used `crunch_list_suppliers`, `crunch_list_expense_types`, `crunch_list_vat_types`, `crunch_list_bank_accounts` and `crunch_list_accounting_periods` to find valid values, then `crunch_create_expense`. The `record_receipt` prompt asks for exactly this flow.
 
+Crunch's API has no way to tell a retried request from a new one, so `crunch_create_expense` first looks for an expense from the same supplier on the same date with the same gross amount and supplier reference. If there is one, it refuses and names it, so a repeated call doesn't record the receipt twice. Pass `allow_duplicate: true` when it really is a second, identical purchase.
+
 ### Chasing overdue invoices
 
 > **You:** */mcp__crunch__chase_overdue_invoices 14*
