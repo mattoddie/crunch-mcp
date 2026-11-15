@@ -216,7 +216,7 @@ Login tokens are never shown by any tool. `crunch_auth_status` reports where the
 
 ## The raw API tool
 
-`crunch_api_request` (toolset `raw`) calls any path of the Crunch public API, such as `/expenses/vat-types` or `/banking/bank-accounts`. It's a fallback for things the other tools don't cover. It follows the same switches as everything else:
+`crunch_api_request` (toolset `raw`) calls any path of the Crunch public API, such as `/expenses/vat-types` or `/banking/bank-accounts`. It's a fallback for things the other tools don't cover, and it's off unless you list `raw` by name in `CRUNCH_TOOLSETS` (for example `all,raw`): `all` leaves it out. It follows the same switches as everything else:
 
 | Settings | Allowed methods |
 |---|---|
@@ -224,7 +224,7 @@ Login tokens are never shown by any tool. `crunch_auth_status` reports where the
 | `CRUNCH_ALLOW_WRITES=true` | `GET`, `POST`, `PUT` |
 | `+ CRUNCH_ALLOW_DELETES=true` | All, including `DELETE` |
 
-Without `CRUNCH_ALLOW_EMAIL`, it also refuses email and reminder endpoints and request bodies that turn on `sendReminders`. Without `CRUNCH_ALLOW_DELETES`, a `PUT` to an invoice, expense or recurring expense must send back all of its existing payments and attachments (the tool fetches the record to check). The path must be a plain, canonical API path: query parameters go in `query`, and `.` or `..` segments, `//`, `%`, `;`, spaces and control characters are refused. Leave `raw` out of `CRUNCH_TOOLSETS` if you want the assistant limited to the curated tools.
+`POST`, `PUT` and `DELETE` requests are only sent to the write endpoints of Crunch's documented public API; anything else is refused. A `POST` that creates a record must not have an `id` in its body. Without `CRUNCH_ALLOW_EMAIL`, it also refuses email and reminder endpoints and request bodies that turn on `sendReminders`. Without `CRUNCH_ALLOW_DELETES`, a `PUT` to an invoice, expense or recurring expense must send back all of its existing payments and attachments (the tool fetches the record to check). The path must be a plain, canonical API path: query parameters go in `query`, segments may only contain letters, digits, `-` and `_`, and a segment starting with a digit must be a plain number such as `123`.
 
 ## Tips for good results
 

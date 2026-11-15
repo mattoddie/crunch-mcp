@@ -19,13 +19,24 @@ func summarizeAddress(a any) string {
 	return strings.Join(parts, ", ")
 }
 
+// parseDate reads a timestamp or a plain YYYY-MM-DD date, both of which Crunch uses.
+func parseDate(s string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+	return time.Parse(time.DateOnly, s)
+}
+
 func summarizeCompany(c Obj) Obj {
 	schemes := crunch.List(c, "vatSchemeChanges")
 	now := time.Now()
 	var current Obj
 	for _, s := range schemes {
-		from, errFrom := time.Parse(time.RFC3339, crunch.Str(s, "dateFrom"))
-		to, errTo := time.Parse(time.RFC3339, crunch.Str(s, "dateTo"))
+		from, errFrom := parseDate(crunch.Str(s, "dateFrom"))
+		to, errTo := parseDate(crunch.Str(s, "dateTo"))
+		if len(crunch.Str(s, "dateTo")) == len(time.DateOnly) {
+			to = to.AddDate(0, 0, 1) // a plain end date includes the whole day
+		}
 		if (errFrom != nil || !from.After(now)) && (errTo != nil || !to.Before(now)) {
 			current = s
 			break
@@ -71,7 +82,7 @@ func registerAccount(c *Context) {
 		Description: "Start logging this server in to a Crunch account (OAuth 2.0 with PKCE). Returns a URL for the user to open and approve. After they click Allow, the browser is sent to the redirect URI; " +
 			"if nothing is listening there the page fails to load, which is fine: ask the user to copy the full URL from the address bar and pass it to crunch_auth_complete. " +
 			"Logging in replaces the current tokens, possibly with a different Crunch account.",
-		ReadOnly: boolPtr(false), Destructive: boolPtr(false),
+		ReadOnly: boolPtr(false), Destructive: boolPtr(false), Audited: true,
 	}, func(ctx context.Context, _ NoArgs) (any, error) {
 		login, err := cl.Auth.StartLogin()
 		if err != nil {
@@ -86,7 +97,7 @@ func registerAccount(c *Context) {
 	add(c, Def{
 		Toolset: "account", Name: "crunch_auth_complete", Title: "Finish Crunch login",
 		Description: "Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned.",
-		ReadOnly:    boolPtr(false), Destructive: boolPtr(false),
+		ReadOnly:    boolPtr(false), Destructive: boolPtr(false), Audited: true,
 	}, func(ctx context.Context, a authCompleteArgs) (any, error) {
 		res, err := cl.Auth.CompleteLogin(ctx, a.RedirectedURL, a.State)
 		if err != nil {

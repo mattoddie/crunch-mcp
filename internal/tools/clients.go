@@ -92,7 +92,7 @@ func registerClients(c *Context) {
 		Description: "Create a client (customer) to invoice. A name and a billing address with line1, line2 and country are needed. Check crunch_list_clients first to avoid duplicates.",
 		Gate:        Write,
 	}, func(ctx context.Context, a createClientArgs) (any, error) {
-		if err := c.checkReminders(a.Extra); err != nil {
+		if err := c.checkFields(a.Extra, true); err != nil {
 			return nil, err
 		}
 		body := merge(set(a.body(a.Name), "billingAddress", a.BillingAddress.body()), a.Extra)
@@ -105,7 +105,7 @@ func registerClients(c *Context) {
 		Description: "Change a client's details. Only the fields you pass change; the rest are kept (a new billing_address replaces the whole address).",
 		Gate:        Write, Idempotent: true,
 	}, func(ctx context.Context, a updateClientArgs) (any, error) {
-		if err := c.checkReminders(a.Extra); err != nil {
+		if err := c.checkFields(a.Extra, false); err != nil {
 			return nil, err
 		}
 		p := path("/clients/%d", a.ClientID)

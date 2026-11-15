@@ -17,6 +17,11 @@ import (
 // Toolsets are groups of tools that can be switched on and off with CRUNCH_TOOLSETS.
 var Toolsets = []string{"account", "reference", "banking", "clients", "suppliers", "expenses", "recurring", "invoices", "raw"}
 
+// OptInToolsets are left out of "all" (and so of the default) and must be listed by name. The
+// raw API tool reaches endpoints the curated tools gate more finely, so it is never enabled
+// without being asked for.
+var OptInToolsets = map[string]bool{"raw": true}
+
 // Crunch holds the API and OAuth settings.
 type Crunch struct {
 	// APIURL is the base URL of the public API, e.g. https://public-api.crunch.co.uk/v1.
@@ -240,12 +245,14 @@ func Load(env Env) (*Config, error) {
 		case name == "":
 		case name == "all":
 			for _, ts := range Toolsets {
-				t.Toolsets[ts] = true
+				if !OptInToolsets[ts] {
+					t.Toolsets[ts] = true
+				}
 			}
 		case contains(Toolsets, name):
 			t.Toolsets[name] = true
 		default:
-			return nil, fmt.Errorf("unknown toolset %q in CRUNCH_TOOLSETS; valid: all, %s", name, strings.Join(Toolsets, ", "))
+			return nil, fmt.Errorf("unknown toolset %q in CRUNCH_TOOLSETS; valid: all (every toolset except raw), %s", name, strings.Join(Toolsets, ", "))
 		}
 	}
 

@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	"github.com/mattoddie/crunch-mcp/internal/crunch"
 )
@@ -178,6 +179,9 @@ func registerBanking(c *Context) {
 		Description: "Add a bank account to Crunch so payments can be recorded against it.",
 		Gate:        Write,
 	}, func(ctx context.Context, a createBankAccountArgs) (any, error) {
+		if err := c.checkFields(a.Extra, true); err != nil {
+			return nil, err
+		}
 		a.bankAccountFields.DisplayName, a.bankAccountFields.BankName = a.DisplayName, a.BankName
 		var out any
 		return out, cl.Post(ctx, "/banking/bank-accounts", nil, a.body(), &out)
@@ -188,6 +192,9 @@ func registerBanking(c *Context) {
 		Description: "Change a bank account's details. Only the fields you pass change; the rest are kept. Sort code and account number can't be changed once the account has a bank feed or reconciled entries.",
 		Gate:        Write, Idempotent: true,
 	}, func(ctx context.Context, a updateBankAccountArgs) (any, error) {
+		if err := c.checkFields(a.Extra, false); err != nil {
+			return nil, err
+		}
 		p := path("/banking/bank-accounts/%d", a.BankAccountID)
 		var current Obj
 		if err := cl.Get(ctx, p, nil, &current); err != nil {
@@ -276,6 +283,9 @@ func registerBanking(c *Context) {
 		Description: "Add a credit card to Crunch so expenses can be paid from it. Set its opening balance with crunch_set_credit_card_opening_balance.",
 		Gate:        Write,
 	}, func(ctx context.Context, a createCreditCardArgs) (any, error) {
+		if err := c.checkFields(a.Extra, true); err != nil {
+			return nil, err
+		}
 		a.creditCardFields.DisplayName = a.DisplayName
 		var out any
 		return out, cl.Post(ctx, "/banking/credit-cards", nil, a.body(), &out)
@@ -286,6 +296,9 @@ func registerBanking(c *Context) {
 		Description: "Change a credit card's details. Only the fields you pass change.",
 		Gate:        Write, Idempotent: true,
 	}, func(ctx context.Context, a updateCreditCardArgs) (any, error) {
+		if err := c.checkFields(a.Extra, false); err != nil {
+			return nil, err
+		}
 		p := path("/banking/credit-cards/%d", a.CreditCardID)
 		var current Obj
 		if err := cl.Get(ctx, p, nil, &current); err != nil {
@@ -312,7 +325,15 @@ func registerBanking(c *Context) {
 		Gate:        Write, Idempotent: true,
 	}, func(ctx context.Context, a openingBalanceArgs) (any, error) {
 		var existing Obj
-		_ = cl.Get(ctx, path("/banking/credit-cards/%d/openingBalance", a.CreditCardID), nil, &existing)
+		// Only a 404 (no opening balance yet) means create; any other error must not be
+		// mistaken for one, or an existing balance could be posted over.
+		if err := cl.Get(ctx, path("/banking/credit-cards/%d/openingBalance", a.CreditCardID), nil, &existing); err != nil {
+			var cerr *crunch.Error
+			if !errors.As(err, &cerr) || cerr.Status != http.StatusNotFound {
+				return nil, err
+			}
+			existing = nil
+		}
 		q := crunch.Query{"accountBalance": string(a.OpeningBalance)}
 		if existing != nil && existing["openingBalance"] != nil {
 			if v, ok := existing["editable"].(bool); ok && !v {

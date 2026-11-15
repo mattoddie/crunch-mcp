@@ -6,6 +6,27 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `CRUNCH_TOOLSETS=all`, the default, no longer includes the `raw` toolset. The raw API tool (`crunch_api_request`) reaches endpoints the curated tools gate more finely, so it's only enabled when listed by name, for example `CRUNCH_TOOLSETS=all,raw`.
+- **Breaking:** `crunch_api_request` only sends `POST`, `PUT` and `DELETE` requests to the write endpoints of Crunch's documented public API, and refuses any other write. A `POST` that creates a record must not have an `id` in its body.
+- **Breaking:** raw API paths may only contain letters, digits, `-` and `_` in each segment, and a segment that starts with a digit must be a plain number. Paths such as `/invoices/+1`, `/invoices/0x1` or `/invoices/1.json` are refused.
+- **Breaking:** amounts (`Money` arguments) must have at most two decimal places and no exponent, and invoice line quantities at most four decimal places. Such values used to be passed on as they were.
+- **Breaking:** create tools (`crunch_create_invoice`, `crunch_create_expense`, `crunch_create_recurring_expense`, `crunch_create_client`, `crunch_create_supplier`, `crunch_create_bank_account`, `crunch_create_credit_card`) refuse an `id` in `extra`, which could make Crunch replace an existing record and drop its payments.
+- Credit card numbers are masked to the last four digits in `crunch_list_credit_cards` and `crunch_get_overview`.
+- Building from source needs Go 1.26 or later.
+
+### Fixed
+
+- With email off, send flags such as `sendEmail: true` are refused in every tool's `extra` and `changes`, not only in raw requests. `crunch_create_invoice` used to pass them on.
+- `crunch_set_credit_card_opening_balance` returns the error when Crunch can't look up the existing opening balance, instead of trying to create a new one. It only creates one when Crunch says there is none.
+- `crunch_create_expense` and `crunch_create_recurring_expense` with `create_supplier=true` check the lines and their default VAT types before creating the supplier, so a failing expense no longer leaves a new supplier behind. A dry run shows both the supplier and the expense it would create (`then_would_send`).
+- Company details and the overview recognise VAT scheme dates given as plain `YYYY-MM-DD` dates.
+
+### Security
+
+- The audit log records `crunch_auth_start` and `crunch_auth_complete`, which can switch the server to another Crunch account, with the authorisation code redacted. It also redacts card numbers, account numbers, sort codes and IBANs.
+
 ## [0.4.2] - 2026-11-13
 
 ### Added

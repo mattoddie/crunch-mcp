@@ -27,7 +27,27 @@ var (
 	recordPathRe = regexp.MustCompile(`^/(invoices|expenses|expenses/recurring-expenses)/\d+$`)
 )
 
-const badPath = "path must start with /, must be in canonical form (no '.', '..' or empty segments), and must not contain a query string, '%', ';', '\\', spaces or control characters (use query for parameters)"
+const badPath = "path must start with /, must be in canonical form (no '.', '..' or empty segments), and each segment may only contain letters, digits, '-' and '_', with a segment that starts with a digit being a plain number such as 123 (use query for parameters)"
+
+var (
+	// A path segment: a name, or a record id.
+	segmentRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
+	digitsRe  = regexp.MustCompile(`^\d+$`)
+)
+
+// rawWrites are the requests that change something which the raw tool may send: every
+// write endpoint of Crunch's documented public API (canonical, lower-case paths; {id} is
+// a number). Anything else is refused, so an endpoint the access checks don't know can't
+// be used to get round them; Crunch refuses undocumented endpoints anyway.
+var rawWrites = map[string]*regexp.Regexp{
+	http.MethodPost: regexp.MustCompile(`^/(invoices|invoices/\d+/(issue|email)|expenses|expenses/recurring-expenses|expenses/suppliers|clients|banking/bank-accounts|banking/credit-cards|banking/credit-cards/postopeningbalance/\d+)$`),
+	http.MethodPut: regexp.MustCompile(`^/(invoices/\d+|expenses/\d+|expenses/recurring-expenses/\d+|expenses/suppliers/\d+|clients/\d+|` +
+		`banking/(bank-accounts|credit-cards)/((default|archive)/)?\d+|banking/credit-cards/updateopeningbalance/\d+)$`),
+	http.MethodDelete: regexp.MustCompile(`^/(invoices|expenses|expenses/recurring-expenses|expenses/suppliers|clients|banking/bank-accounts|banking/credit-cards)/\d+$`),
+}
+
+// rawCreateRe matches the POSTs that create a record, whose body must not name an existing one.
+var rawCreateRe = regexp.MustCompile(`^/(invoices|expenses|expenses/recurring-expenses|expenses/suppliers|clients|banking/bank-accounts|banking/credit-cards)$`)
 
 // cleanRawPath checks a raw path and returns it without the optional /v1 prefix, plus the
 // canonical lower-case form the access checks match against. Only canonical paths are
@@ -52,6 +72,16 @@ func cleanRawPath(p string) (string, string, error) {
 	if pathpkg.Clean(canon) != canon {
 		return "", "", errors.New(badPath)
 	}
+	// Spring reads ids leniently ("+1", "0x1", "1.json" can all mean record 1), so only
+	// plain segments are accepted and anything that starts like a number must be one:
+	// the checks below then see the same record Crunch does.
+	if canon != "/" {
+		for _, seg := range strings.Split(canon[1:], "/") {
+			if !segmentRe.MatchString(seg) || (seg[0] >= '0' && seg[0] <= '9' && !digitsRe.MatchString(seg)) {
+				return "", "", errors.New(badPath)
+			}
+		}
+	}
 	return p, strings.ToLower(canon), nil
 }
 
@@ -64,7 +94,10 @@ func registerRaw(c *Context) {
 	case c.AllowDeletes:
 		desc += "All HTTP methods are allowed."
 	default:
-		desc += "DELETE is not allowed because delete access is disabled (CRUNCH_ALLOW_DELETES=false), and a PUT (or a POST to a record) must keep the record's existing payments and attachments."
+		desc += "DELETE is not allowed because delete access is disabled (CRUNCH_ALLOW_DELETES=false), and a PUT must keep the record's existing payments and attachments."
+	}
+	if c.AllowWrites {
+		desc += " Writes only go to the write endpoints of Crunch's documented public API (such as POST /invoices or PUT /expenses/{id}), and a POST that creates a record must not include an id."
 	}
 	if !c.AllowEmail {
 		desc += " Emailing invoices and turning on payment reminders are blocked (CRUNCH_ALLOW_EMAIL=false), including query parameters and body flags that might send email."
@@ -93,6 +126,8 @@ func registerRaw(c *Context) {
 			return nil, errors.New("delete access is disabled. Set CRUNCH_ALLOW_DELETES=true to allow DELETE requests")
 		case method != "POST" && method != "PUT" && method != "DELETE":
 			return nil, errors.New("method must be GET, POST, PUT or DELETE")
+		case !rawWrites[method].MatchString(canon):
+			return nil, fmt.Errorf("%s %s is not one of the write endpoints of Crunch's public API that this tool knows, so it is refused. Use GET to read, or the dedicated tools to change records", method, p)
 		}
 		if !c.AllowEmail && emailPathRe.MatchString(canon) {
 			return nil, errors.New("emailing invoices is disabled. Set CRUNCH_ALLOW_EMAIL=true to allow it")
@@ -104,6 +139,11 @@ func registerRaw(c *Context) {
 		}
 		if method == http.MethodPut {
 			if err := checkRawBodyID(canon, a.Body); err != nil {
+				return nil, err
+			}
+		}
+		if method == http.MethodPost && rawCreateRe.MatchString(canon) {
+			if err := checkNoID(a.Body, "body"); err != nil {
 				return nil, err
 			}
 		}

@@ -46,7 +46,7 @@ If the public API gains an endpoint for something here, contributions are welcom
 | Component | Requirement |
 |---|---|
 | Docker image | `linux/amd64` or `linux/arm64` (for example Raspberry Pi 4/5) |
-| Go (to build without Docker) | 1.25 or later |
+| Go (to build without Docker) | 1.26 or later |
 | Operating system for the binary | Linux and macOS. Windows should work, but isn't tested. |
 | Network | Outbound HTTPS to `public-api.crunch.co.uk` and `oauth.crunch.co.uk` |
 | MCP clients | Any client supporting Streamable HTTP or stdio. See [Connecting MCP clients](clients.md). |

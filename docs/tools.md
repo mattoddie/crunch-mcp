@@ -13,7 +13,7 @@ Each tool is labelled with the setting it needs:
 | 🔴 delete | `CRUNCH_ALLOW_WRITES=true` and `CRUNCH_ALLOW_DELETES=true` |
 | 🟣 email | `CRUNCH_ALLOW_WRITES=true` and `CRUNCH_ALLOW_EMAIL=true` |
 
-Every tool also needs its toolset to be enabled in `CRUNCH_TOOLSETS`, which enables all toolsets by default. List tools return compact summaries and take `raw: true` for the full API objects. Amounts can be given as numbers (`120`) or decimal strings (`"120.00"`), and dates as `YYYY-MM-DD`.
+Every tool also needs its toolset to be enabled in `CRUNCH_TOOLSETS`, which enables every toolset except `raw` by default (list `raw` by name to add it). List tools return compact summaries and take `raw: true` for the full API objects. Amounts can be given as numbers (`120`) or decimal strings (`"120.00"`) with at most two decimal places, and dates as `YYYY-MM-DD`.
 
 ## Contents
 
@@ -25,7 +25,7 @@ Every tool also needs its toolset to be enabled in `CRUNCH_TOOLSETS`, which enab
 - [`expenses`](#expenses): Expenses: list and filter, totals, create with lines, payments and receipts, update, record and remove payments, attach and download receipts, delete.
 - [`recurring`](#recurring): Recurring expenses that Crunch creates on a schedule: list, create, pause or change, delete.
 - [`invoices`](#invoices): Sales invoices: list and filter, totals, create drafts, update, issue, email to the customer, record and remove payments, attachments, PDF download, delete.
-- [`raw`](#raw): A raw API escape hatch for anything the other tools don't cover. It is limited to GET requests unless writes are enabled.
+- [`raw`](#raw): A raw API escape hatch for anything the other tools don't cover. It is only enabled when listed by name in `CRUNCH_TOOLSETS` (`all` leaves it out), and is limited to GET requests unless writes are enabled.
 - [Prompts](#prompts)
 
 ## account
@@ -991,7 +991,7 @@ Create a draft sales invoice for a client: date, lines (description, unit price 
 | `items[].price_excl_vat` | number \| string | yes | Unit price before VAT, for example 100.00 |
 | `items[].vat_rate` | string | yes | VAT type display name, for example Standard or Outside the Scope (see crunch_list_vat_types for=invoices) |
 | `items[].line_type` | string |  | Crunch's lineType (default S) |
-| `items[].quantity` | number \| string |  | Quantity (default 1) |
+| `items[].quantity` | number \| string |  | Quantity (default 1), up to four decimal places |
 | `attachments` | object[] |  | Up to 5 files to attach |
 | `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
@@ -1167,7 +1167,7 @@ Change a sales invoice. The current invoice is fetched and only what you pass ch
 | `items[].price_excl_vat` | number \| string | yes | Unit price before VAT, for example 100.00 |
 | `items[].vat_rate` | string | yes | VAT type display name, for example Standard or Outside the Scope (see crunch_list_vat_types for=invoices) |
 | `items[].line_type` | string |  | Crunch's lineType (default S) |
-| `items[].quantity` | number \| string |  | Quantity (default 1) |
+| `items[].quantity` | number \| string |  | Quantity (default 1), up to four decimal places |
 | `note` | string |  | New note printed on the invoice |
 | `payment_terms_days` | integer |  | Payment terms in days |
 | `purchase_order` | string |  | New purchase order number |
@@ -1176,7 +1176,7 @@ Change a sales invoice. The current invoice is fetched and only what you pass ch
 
 ## raw
 
-A raw API escape hatch for anything the other tools don't cover. It is limited to GET requests unless writes are enabled.
+A raw API escape hatch for anything the other tools don't cover. It is only enabled when listed by name in `CRUNCH_TOOLSETS` (`all` leaves it out), and is limited to GET requests unless writes are enabled.
 
 | Tool | Access | Summary |
 |---|---|---|
@@ -1186,7 +1186,7 @@ A raw API escape hatch for anything the other tools don't cover. It is limited t
 
 🟢 read · destructive
 
-Call any Crunch public API endpoint directly, for anything the other tools don't cover. `path` is relative to the API root and starts with the service: /banking, /clients, /company-details, /expenses, /immutable-data, /invoices or /user-details. All HTTP methods are allowed.
+Call any Crunch public API endpoint directly, for anything the other tools don't cover. `path` is relative to the API root and starts with the service: /banking, /clients, /company-details, /expenses, /immutable-data, /invoices or /user-details. All HTTP methods are allowed. Writes only go to the write endpoints of Crunch's documented public API (such as POST /invoices or PUT /expenses/{id}), and a POST that creates a record must not include an id.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|

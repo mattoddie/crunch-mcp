@@ -140,7 +140,7 @@ func TestRawPathsMustBeCanonical(t *testing.T) {
 			t.Errorf("%q: %s", p, msg)
 		}
 	}
-	for _, p := range []string{"/invoices/1/email", "/invoices/1/email/", "/Invoices/1/EMAIL", "/v1/invoices/1/email", "/invoices/1/send-reminder"} {
+	for _, p := range []string{"/invoices/1/email", "/invoices/1/email/", "/Invoices/1/EMAIL", "/v1/invoices/1/email"} {
 		if msg := env.callErr("crunch_api_request", map[string]any{"method": "POST", "path": p}); !strings.Contains(msg, "CRUNCH_ALLOW_EMAIL") {
 			t.Errorf("%q: %s", p, msg)
 		}
@@ -305,7 +305,11 @@ func TestRawEmailAndDeleteChecksCoverQueryAndPost(t *testing.T) {
 		{map[string]any{"method": "POST", "path": "/invoices/500/issue", "query": map[string]any{"sendEmail": "true"}}, "CRUNCH_ALLOW_EMAIL"},
 		{map[string]any{"method": "PUT", "path": "/invoices/500", "query": map[string]any{"notifyByEmail": "1"}}, "CRUNCH_ALLOW_EMAIL"},
 		{map[string]any{"method": "POST", "path": "/invoices", "body": map[string]any{"sendToCustomer": true}}, "CRUNCH_ALLOW_EMAIL"},
-		{map[string]any{"method": "POST", "path": "/invoices/500", "body": map[string]any{"reference": "x"}}, "payments (id 600)"},
+		{map[string]any{"method": "POST", "path": "/invoices/500", "body": map[string]any{"reference": "x"}}, "not one of the write endpoints"},
+		{map[string]any{"method": "POST", "path": "/invoices/1/send-reminder"}, "not one of the write endpoints"},
+		{map[string]any{"method": "POST", "path": "/invoices/500/share"}, "not one of the write endpoints"},
+		{map[string]any{"method": "POST", "path": "/invoices", "body": map[string]any{"id": 500, "reference": "x"}}, "must not name an existing one"},
+		{map[string]any{"method": "POST", "path": "/expenses", "body": map[string]any{"ID": "77"}}, "must not name an existing one"},
 	} {
 		if msg := env.callErr("crunch_api_request", c.args); !strings.Contains(msg, c.want) {
 			t.Errorf("%v: %s", c.args, msg)

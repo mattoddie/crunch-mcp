@@ -45,10 +45,6 @@
   },
   "tools": [
     {
-      "name": "crunch_api_request",
-      "description": "Call any Crunch public API endpoint directly, for anything the other tools don't cover. `path` is relative to the API root and starts with the service: /banking, /clients, /company-details, /expenses, /immutable-data, /invoices or /user-details. Only GET is allowed because write access is disabled (CRUNCH_ALLOW_WRITES=false). Emailing invoices and turning on payment reminders are blocked (CRUNCH_ALLOW_EMAIL=false), including query parameters and body flags that might send email."
-    },
-    {
       "name": "crunch_auth_complete",
       "description": "Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned."
     },
@@ -306,7 +302,7 @@
     "toolsets": {
       "type": "string",
       "title": "Toolsets",
-      "description": "Optional comma-separated list to expose fewer tools, e.g. account,reference,expenses,suppliers,banking. Empty means all.",
+      "description": "Optional comma-separated list to expose fewer tools, e.g. account,reference,expenses,suppliers,banking. Empty means all except raw, which must be listed by name (e.g. all,raw).",
       "default": ""
     },
     "files_dir": {

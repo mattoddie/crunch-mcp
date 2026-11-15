@@ -46,6 +46,9 @@ type Call struct {
 	sent        []SentRequest
 	fetched     []fetched
 	intercepted *Intercepted
+	// later are requests stopped after the first, by a tool that carries on past a
+	// stopped request to preview a second step (creating a supplier, then the expense).
+	later []*Intercepted
 }
 
 // SentRequest is a request that changes something, as sent to Crunch.
@@ -105,6 +108,13 @@ func (c *Call) Sent() []SentRequest {
 	return append([]SentRequest(nil), c.sent...)
 }
 
+// Later returns the requests a dry run stopped after the first one.
+func (c *Call) Later() []*Intercepted {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]*Intercepted(nil), c.later...)
+}
+
 // Intercepted returns the request a dry run stopped, or nil.
 func (c *Call) Intercepted() *Intercepted {
 	c.mu.Lock()
@@ -134,14 +144,17 @@ func (c *Call) remember(path string, data []byte) {
 func (c *Call) intercept(method, path string, q Query, body any) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.intercepted == nil {
-		var b any
-		if body != nil {
-			if data, err := json.Marshal(body); err == nil {
-				b, _ = normalise(data)
-			}
+	var b any
+	if body != nil {
+		if data, err := json.Marshal(body); err == nil {
+			b, _ = normalise(data)
 		}
-		c.intercepted = &Intercepted{Method: method, Path: path, Query: q, Body: b, Current: c.currentLocked(method, path)}
+	}
+	i := &Intercepted{Method: method, Path: path, Query: q, Body: b, Current: c.currentLocked(method, path)}
+	if c.intercepted == nil {
+		c.intercepted = i
+	} else {
+		c.later = append(c.later, i)
 	}
 	return &DryRunError{Method: method, Path: path}
 }
