@@ -36,7 +36,7 @@ These parts of Crunch aren't available through the public API, or aren't covered
 - Bank statement entries, bank feeds and reconciliation (only payments recorded against an account are visible)
 - VAT returns, Self Assessment, Corporation Tax and other filings
 - Payroll, dividends and director's loan account details beyond what expenses show
-- Credit notes, quotes and classic invoices
+- Creating credit notes (the public API has no credit note endpoints; `crunch_list_credit_notes` lists the ones recorded against invoices and expenses), quotes and classic invoices
 - Journals, reports and the accounts themselves (profit and loss, balance sheet)
 
 If the public API gains an endpoint for something here, contributions are welcome. The `raw` tool can reach any public endpoint in the meantime.

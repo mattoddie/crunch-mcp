@@ -261,6 +261,7 @@ func registerReports(c *Context) {
 	})
 
 	registerVATSummary(c)
+	registerCreditNotes(c)
 }
 
 // sortAged puts the oldest records first.

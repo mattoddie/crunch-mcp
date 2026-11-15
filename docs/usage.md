@@ -25,6 +25,7 @@ Once the server is connected and logged in, just talk to your assistant about yo
 - *"Which invoices are unpaid? Which are overdue, and by how long?"* (`crunch_get_aged_debtors`)
 - *"How much have I invoiced Example Client Ltd this year?"* (`crunch_get_invoice_totals`)
 - *"Show me invoice 1234 and download the PDF."*
+- *"Which credit notes did I issue last quarter?"* (`crunch_list_credit_notes`)
 - *"Example Client Ltd paid INV-0042 in full yesterday. Record the payment."* (writes)
 
 **Expenses and receipts**
