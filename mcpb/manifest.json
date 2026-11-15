@@ -33,6 +33,8 @@
         "CRUNCH_ALLOW_DELETES": "${user_config.allow_deletes}",
         "CRUNCH_ALLOW_EMAIL": "${user_config.allow_email}",
         "CRUNCH_TOOLSETS": "${user_config.toolsets}",
+        "CRUNCH_RAW_ALLOW": "${user_config.raw_allow}",
+        "CRUNCH_RAW_READ_ONLY": "${user_config.raw_read_only}",
         "CRUNCH_FILES_DIR": "${user_config.files_dir}",
         "CRUNCH_AUDIT_LOG": "${user_config.audit_log}"
       },
@@ -320,6 +322,18 @@
       "title": "Toolsets",
       "description": "Optional comma-separated list to expose fewer tools, e.g. account,reference,expenses,suppliers,banking. Empty means all except raw, which must be listed by name (e.g. all,raw).",
       "default": ""
+    },
+    "raw_allow": {
+      "type": "string",
+      "title": "Raw API paths",
+      "description": "Optional comma-separated API path prefixes the raw API tool may use, e.g. /expenses,/invoices. Only matters when the raw toolset is listed in Toolsets. Empty allows every path.",
+      "default": ""
+    },
+    "raw_read_only": {
+      "type": "boolean",
+      "title": "Raw API tool read-only",
+      "description": "Keep the raw API tool to reading (GET) even when changes are allowed. Only matters when the raw toolset is listed in Toolsets.",
+      "default": false
     },
     "files_dir": {
       "type": "directory",

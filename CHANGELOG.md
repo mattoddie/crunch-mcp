@@ -8,6 +8,7 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ### Added
 
+- `CRUNCH_RAW_ALLOW` limits the raw API tool to a list of path prefixes, such as `/expenses,/invoices`, and `CRUNCH_RAW_READ_ONLY=true` keeps it to `GET` requests even when writes are on. Both are in the Claude Desktop extension's settings and the MCP Registry entry.
 - A `reports` toolset of read-only reports, included in `all`. `crunch_get_aged_debtors` totals the outstanding balances of issued sales invoices by days past due (current, 1-30, 31-60, 61-90, over 90) and by customer. `crunch_get_aged_creditors` does the same for unpaid expenses by supplier, aged from the expense date because Crunch's expenses have no due date. Both take `as_of_date` and `details`.
 - `crunch_list_credit_notes` (in `reports`) lists credit notes against sales invoices, against expenses, or both, with amounts, state, lines and refunds. Crunch's public API has no credit note endpoints, so they're read from the invoices and expenses they belong to, and can't be created through crunch-mcp.
 - `crunch_get_vat_summary` (in `reports`) totals net, VAT and gross by VAT type for a date range, for sales from issued invoice lines and purchases from expense lines, with VAT on sales minus VAT on purchases. It's for sense-checking a VAT return, not a return itself, and it reports credit notes separately rather than deducting them.
