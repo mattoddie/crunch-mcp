@@ -137,6 +137,10 @@
       "description": "Get the logged-in Crunch user: ID, email address, first and last name."
     },
     {
+      "name": "crunch_get_vat_summary",
+      "description": "Net, VAT and gross by VAT type for a period, for sales (issued invoices by issue date) and purchases (expenses by expense date), with VAT on sales minus VAT on purchases. Use it to sense-check a VAT return; it is not one (Crunch's API has no VAT returns, and the Flat Rate Scheme and cash accounting work VAT out differently). Reads each invoice in the period, so long periods take a while."
+    },
+    {
       "name": "crunch_list_accounting_periods",
       "description": "List the open accounting periods (financial years) with their start and end dates and status. Expenses can only be created or changed in an open period; closed years can't be edited."
     },

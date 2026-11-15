@@ -259,6 +259,8 @@ func registerReports(c *Context) {
 		sortAged(items, "age_days")
 		return t.result(asOfStr, "supplier", items, truncated), nil
 	})
+
+	registerVATSummary(c)
 }
 
 // sortAged puts the oldest records first.

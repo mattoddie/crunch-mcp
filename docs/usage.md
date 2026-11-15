@@ -92,11 +92,11 @@ The `period_summary` prompt does the same for any dates, with tables by customer
 
 ### A VAT-period estimate
 
-> **You:** */mcp__crunch__period_summary 2026-07-01 2026-09-30*
+> **You:** *What does my VAT look like for July to September?*
 >
 > **Assistant:** *… Estimated output VAT on sales: £5,760. Estimated input VAT on purchases: £412. You're on the standard VAT scheme, so the estimate of VAT due is about £5,348. This is an estimate from the invoices and expenses in Crunch, not your VAT return.*
 
-crunch-mcp can't see or file VAT returns: they aren't part of Crunch's public API. Use estimates like this to sense-check, and file through Crunch as usual. On the Flat Rate Scheme, VAT due is worked out differently, and the assistant says so.
+`crunch_get_vat_summary` adds up net, VAT and gross by VAT type for sales (issued invoices, by issue date) and purchases (expenses, by expense date), and gives VAT on sales minus VAT on purchases. The `period_summary` prompt covers the same ground in a wider summary. crunch-mcp can't see or file VAT returns: they aren't part of Crunch's public API. Use estimates like this to sense-check, and file through Crunch as usual. On the Flat Rate Scheme, VAT due is worked out differently, and the assistant says so.
 
 ### Creating and issuing an invoice
 

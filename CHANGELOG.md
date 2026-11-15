@@ -9,6 +9,7 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 ### Added
 
 - A `reports` toolset of read-only reports, included in `all`. `crunch_get_aged_debtors` totals the outstanding balances of issued sales invoices by days past due (current, 1-30, 31-60, 61-90, over 90) and by customer. `crunch_get_aged_creditors` does the same for unpaid expenses by supplier, aged from the expense date because Crunch's expenses have no due date. Both take `as_of_date` and `details`.
+- `crunch_get_vat_summary` (in `reports`) totals net, VAT and gross by VAT type for a date range, for sales from issued invoice lines and purchases from expense lines, with VAT on sales minus VAT on purchases. It's for sense-checking a VAT return, not a return itself, and it reports credit notes separately rather than deducting them.
 - `crunch_create_expense` refuses an expense that matches an existing one (same supplier, date, gross amount and supplier reference) and names it, because Crunch has no idempotency key and a repeated call would record the purchase twice. Pass the new `allow_duplicate: true` to create it anyway.
 
 ### Changed

@@ -30,7 +30,7 @@ var toolsetInfo = map[string]string{
 	"expenses":  "Expenses: list and filter, totals, create with lines, payments and receipts, update, record and remove payments, attach and download receipts, delete.",
 	"recurring": "Recurring expenses that Crunch creates on a schedule: list, create, pause or change, delete.",
 	"invoices":  "Sales invoices: list and filter, totals, create drafts, update, issue, email to the customer, record and remove payments, attachments, PDF download, delete.",
-	"reports":   "Read-only reports built from your invoices and expenses: aged debtors and creditors.",
+	"reports":   "Read-only reports built from your invoices and expenses: aged debtors and creditors, and a VAT summary by VAT type.",
 	"raw":       "A raw API escape hatch for anything the other tools don't cover. It is only enabled when listed by name in `CRUNCH_TOOLSETS` (`all` leaves it out), and is limited to GET requests unless writes are enabled.",
 }
 
