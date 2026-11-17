@@ -67,7 +67,7 @@ func TestDryRunCreateShowsBody(t *testing.T) {
 	res := env.obj("crunch_create_expense", map[string]any{
 		"supplier_id": 5, "posting_date": "2026-09-14", "dry_run": true,
 		"line_items":  []any{map[string]any{"expense_type": "ACCOUNTANCY", "gross_amount": 120}},
-		"attachments": []any{map[string]any{"file_name": "r.png", "content_base64": big}},
+		"attachments": []any{map[string]any{"filename": "r.png", "content_base64": big}},
 	})
 	if sent := env.writesSent(); len(sent) != 0 {
 		t.Fatalf("a dry run sent %v", sent)
@@ -152,7 +152,7 @@ func TestAuditLog(t *testing.T) {
 	env.call("crunch_api_request", map[string]any{"path": "/clients/list"}) // raw GET: not logged
 	env.call("crunch_create_client", map[string]any{"name": "Example Ltd", "billing_address": map[string]any{"line1": "1 High St", "line2": "Town", "country": "GB"}})
 	env.call("crunch_update_expense", map[string]any{"expense_id": 77, "note": "x", "dry_run": true})
-	env.callErr("crunch_add_expense_attachment", map[string]any{"expense_id": 77, "attachments": []any{map[string]any{"file_name": "a.png", "content_base64": big + "!"}}})
+	env.callErr("crunch_add_expense_attachment", map[string]any{"expense_id": 77, "attachments": []any{map[string]any{"filename": "a.png", "content_base64": big + "!"}}})
 	env.rejects("crunch_delete_expense", map[string]any{"expense_id": "not a number"})
 
 	entries := readAudit(t, file)

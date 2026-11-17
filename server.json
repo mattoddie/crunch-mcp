@@ -74,7 +74,7 @@
           "description": "Optional comma-separated toolsets, e.g. account,reference,expenses. Empty means all but raw (list raw by name)."
         },
         {
-          "name": "CRUNCH_RAW_ALLOW",
+          "name": "CRUNCH_RAW_ALLOWED_PATHS",
           "description": "Optional comma-separated path prefixes the raw API tool may use, e.g. /expenses. Empty allows all."
         },
         {

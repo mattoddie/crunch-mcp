@@ -47,7 +47,7 @@ func TestVATSummary(t *testing.T) {
 			}},
 		}}
 	})
-	res := env.obj("crunch_get_vat_summary", map[string]any{"start_date": "2026-07-01", "end_date": "2026-09-30"})
+	res := env.obj("crunch_get_vat_summary", map[string]any{"from": "2026-07-01", "to": "2026-09-30"})
 	sales := res["sales"].(Obj)
 	wantSales := `[{"gross":20,"lines":1,"net":20,"vat":0,"vat_type":"Reduced"},{"gross":249.99,"lines":3,"net":209.99,"vat":40,"vat_type":"Standard"},{"gross":50,"lines":1,"net":50,"vat":0,"vat_type":"Zero Rated"}]`
 	if got := asJSON(t, sales["by_vat_type"]); got != wantSales || num(sales["invoices"]) != 3 {
@@ -69,7 +69,7 @@ func TestVATSummary(t *testing.T) {
 	if !strings.Contains(res["note"].(string), "not a VAT return") {
 		t.Errorf("note: %v", res["note"])
 	}
-	if msg := env.callErr("crunch_get_vat_summary", map[string]any{"start_date": "2026-09-30", "end_date": "2026-07-01"}); !strings.Contains(msg, "end_date") {
+	if msg := env.callErr("crunch_get_vat_summary", map[string]any{"from": "2026-09-30", "to": "2026-07-01"}); !strings.Contains(msg, "to must not") {
 		t.Errorf("reversed dates: %s", msg)
 	}
 }

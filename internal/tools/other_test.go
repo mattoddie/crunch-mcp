@@ -188,7 +188,7 @@ func TestReferenceTools(t *testing.T) {
 	env.mock.On("GET", "/expenses/vat-types", crunchtest.JSON(Obj{"vatTypes": []any{Obj{"name": "Standard", "vatPercent": 20}}}))
 	env.mock.On("GET", "/invoices/vat-types", crunchtest.JSON(Obj{"vatTypes": []any{Obj{"displayName": "Exempt", "vatPercent": 0}}}))
 	vat := env.obj("crunch_list_vat_types", nil)
-	if asJSON(t, vat) != `{"expenses":[{"name":"Standard","percent":20}],"invoices":[{"name":"Exempt","percent":0}]}` {
+	if asJSON(t, vat) != `{"items":[{"for":"expenses","name":"Standard","percent":20},{"for":"invoices","name":"Exempt","percent":0}],"returned":2,"total":2}` {
 		t.Errorf("vat types: %s", asJSON(t, vat))
 	}
 	env.mock.On("GET", "/invoices/payment-methods", crunchtest.JSON(Obj{"paymentMethods": []any{Obj{"paymentMethodName": "EFT"}}}))

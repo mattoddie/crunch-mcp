@@ -13,8 +13,8 @@ import (
 
 type listCreditNotesArgs struct {
 	For       string `json:"for,omitempty" jsonschema:"invoices (default: credit notes you issued against sales invoices), expenses (credit notes from suppliers) or all"`
-	StartDate Date   `json:"start_date,omitempty" jsonschema:"Only credit notes dated on or after (YYYY-MM-DD)"`
-	EndDate   Date   `json:"end_date,omitempty" jsonschema:"Only credit notes dated on or before (YYYY-MM-DD)"`
+	StartDate Date   `json:"from,omitempty" jsonschema:"Only credit notes dated on or after (YYYY-MM-DD)"`
+	EndDate   Date   `json:"to,omitempty" jsonschema:"Only credit notes dated on or before (YYYY-MM-DD)"`
 	ListArgs
 }
 
@@ -117,7 +117,7 @@ func registerCreditNotes(c *Context) {
 		}
 		out := a.result(notes)
 		if truncated {
-			out["note"] = "Crunch returned more records than this tool reads; the list may be incomplete. Narrow it with end_date."
+			out["note"] = "Crunch returned more records than this tool reads; the list may be incomplete. Narrow it with to."
 		}
 		return out, nil
 	})

@@ -155,10 +155,10 @@ type listExpensesFilters struct {
 	ExpenseType      string `json:"expense_type,omitempty" jsonschema:"Only this expense type, for example TRAVEL_AND_SUBSISTENCE"`
 	HasAttachment    *bool  `json:"has_attachment,omitempty" jsonschema:"Only expenses with (true) or without (false) a receipt attached"`
 	PaymentMethod    string `json:"payment_method,omitempty" jsonschema:"Only expenses paid this way, for example EFT"`
-	StartDate        Date   `json:"start_date,omitempty" jsonschema:"Expenses dated on or after (YYYY-MM-DD)"`
-	EndDate          Date   `json:"end_date,omitempty" jsonschema:"Expenses dated on or before (YYYY-MM-DD)"`
-	PaymentStartDate Date   `json:"payment_start_date,omitempty" jsonschema:"Paid on or after (YYYY-MM-DD)"`
-	PaymentEndDate   Date   `json:"payment_end_date,omitempty" jsonschema:"Paid on or before (YYYY-MM-DD)"`
+	StartDate        Date   `json:"from,omitempty" jsonschema:"Expenses dated on or after (YYYY-MM-DD)"`
+	EndDate          Date   `json:"to,omitempty" jsonschema:"Expenses dated on or before (YYYY-MM-DD)"`
+	PaymentStartDate Date   `json:"payment_from,omitempty" jsonschema:"Paid on or after (YYYY-MM-DD)"`
+	PaymentEndDate   Date   `json:"payment_to,omitempty" jsonschema:"Paid on or before (YYYY-MM-DD)"`
 }
 
 func (f listExpensesFilters) query() crunch.Query {
@@ -228,7 +228,7 @@ type addAttachmentArgs struct {
 type downloadExpenseAttachmentArgs struct {
 	ExpenseID    int64  `json:"expense_id" jsonschema:"Expense ID (see crunch_list_expenses)"`
 	AttachmentID int64  `json:"attachment_id" jsonschema:"Attachment ID within the expense (0, 1, 2...; see crunch_get_expense)"`
-	FileName     string `json:"file_name,omitempty" jsonschema:"Attachment file name (looked up when omitted)"`
+	FileName     string `json:"filename,omitempty" jsonschema:"Attachment file name (looked up when omitted)"`
 	SaveTo       string `json:"save_to,omitempty" jsonschema:"Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR"`
 }
 
@@ -252,7 +252,7 @@ func summarizeExpenseFull(e Obj) Obj {
 		})
 	})
 	out["attachment_files"] = mapItems(crunch.List(e, "attachments"), func(f Obj) Obj {
-		return Obj{"id": crunch.ID(f, "id"), "file_name": crunch.Str(f, "fileName")}
+		return Obj{"id": crunch.ID(f, "id"), "filename": crunch.Str(f, "fileName")}
 	})
 	out["credit_notes"] = e["creditNotes"]
 	out["editable"] = e["editable"]
@@ -545,7 +545,7 @@ func registerExpenses(c *Context) {
 			return nil, err
 		}
 		return Obj{"expense_id": a.ExpenseID, "attachments": mapItems(crunch.List(updated, "attachments"), func(f Obj) Obj {
-			return Obj{"id": crunch.ID(f, "id"), "file_name": crunch.Str(f, "fileName")}
+			return Obj{"id": crunch.ID(f, "id"), "filename": crunch.Str(f, "fileName")}
 		})}, nil
 	})
 

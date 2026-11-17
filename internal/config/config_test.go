@@ -244,7 +244,7 @@ func TestRawToolsetIsOptIn(t *testing.T) {
 }
 
 func TestRawAllowAndReadOnly(t *testing.T) {
-	cfg, err := Load(MapEnv(map[string]string{"CRUNCH_RAW_ALLOW": " /Expenses/ , /v1/invoices,,", "CRUNCH_RAW_READ_ONLY": "true"}))
+	cfg, err := Load(MapEnv(map[string]string{"CRUNCH_RAW_ALLOWED_PATHS": " /Expenses/ , /v1/invoices,,", "CRUNCH_RAW_READ_ONLY": "true"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,10 +257,10 @@ func TestRawAllowAndReadOnly(t *testing.T) {
 		}
 	}
 	if !(Tools{}).RawAllowed("/anything") {
-		t.Error("an empty CRUNCH_RAW_ALLOW should allow every path")
+		t.Error("an empty CRUNCH_RAW_ALLOWED_PATHS should allow every path")
 	}
 	for _, bad := range []string{"expenses", "/expenses/../banking", "/exp enses", "/invoices/%2e", "//x"} {
-		if _, err := Load(MapEnv(map[string]string{"CRUNCH_RAW_ALLOW": bad})); err == nil || !strings.Contains(err.Error(), "CRUNCH_RAW_ALLOW") {
+		if _, err := Load(MapEnv(map[string]string{"CRUNCH_RAW_ALLOWED_PATHS": bad})); err == nil || !strings.Contains(err.Error(), "CRUNCH_RAW_ALLOWED_PATHS") {
 			t.Errorf("%q: %v", bad, err)
 		}
 	}

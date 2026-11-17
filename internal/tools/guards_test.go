@@ -163,7 +163,7 @@ func TestLocalFilesStayInFilesDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	attach := func(p string) map[string]any {
-		return map[string]any{"invoice_id": 500, "attachments": []any{map[string]any{"file_name": "a.txt", "file_path": p}}}
+		return map[string]any{"invoice_id": 500, "attachments": []any{map[string]any{"filename": "a.txt", "file_path": p}}}
 	}
 	if msg := env.callErr("crunch_add_invoice_attachment", attach(outside)); !strings.Contains(msg, "CRUNCH_FILES_DIR") {
 		t.Errorf("file_path without a files dir: %s", msg)
@@ -324,7 +324,7 @@ func TestRawEmailAndDeleteChecksCoverQueryAndPost(t *testing.T) {
 	env.call("crunch_api_request", map[string]any{"method": "POST", "path": "/clients", "body": map[string]any{"name": "Example Ltd", "email": "sam@example.com", "sendReminders": false}})
 }
 
-// CRUNCH_RAW_ALLOW limits the raw tool to path prefixes, and CRUNCH_RAW_READ_ONLY keeps it to reading.
+// CRUNCH_RAW_ALLOWED_PATHS limits the raw tool to path prefixes, and CRUNCH_RAW_READ_ONLY keeps it to reading.
 func TestRawAllowAndReadOnly(t *testing.T) {
 	o := config.AllTools()
 	o.RawAllow, o.RawReadOnly = []string{"/expenses", "/clients"}, true
@@ -332,7 +332,7 @@ func TestRawAllowAndReadOnly(t *testing.T) {
 	env.mock.On("GET", "/expenses/vat-types", crunchtest.JSON([]any{}))
 	env.call("crunch_api_request", map[string]any{"path": "/v1/expenses/vat-types"})
 	for _, p := range []string{"/banking/bank-accounts", "/expenses-x", "/invoices/1"} {
-		if msg := env.callErr("crunch_api_request", map[string]any{"path": p}); !strings.Contains(msg, "CRUNCH_RAW_ALLOW") {
+		if msg := env.callErr("crunch_api_request", map[string]any{"path": p}); !strings.Contains(msg, "CRUNCH_RAW_ALLOWED_PATHS") {
 			t.Errorf("%s: %s", p, msg)
 		}
 	}

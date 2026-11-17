@@ -60,10 +60,10 @@ type getInvoiceArgs struct {
 type invoiceTotalsArgs struct {
 	ClientID      *int64 `json:"client_id,omitempty" jsonschema:"Only this client's invoices"`
 	Status        string `json:"status,omitempty" jsonschema:"Only invoices with this status, as Crunch names it"`
-	IssuedFrom    Date   `json:"issued_from_date,omitempty" jsonschema:"Issued on or after (YYYY-MM-DD)"`
-	IssuedTo      Date   `json:"issued_to_date,omitempty" jsonschema:"Issued on or before (YYYY-MM-DD)"`
-	DueFrom       Date   `json:"due_from_date,omitempty" jsonschema:"Due on or after (YYYY-MM-DD)"`
-	DueTo         Date   `json:"due_to_date,omitempty" jsonschema:"Due on or before (YYYY-MM-DD)"`
+	IssuedFrom    Date   `json:"issued_from,omitempty" jsonschema:"Issued on or after (YYYY-MM-DD)"`
+	IssuedTo      Date   `json:"issued_to,omitempty" jsonschema:"Issued on or before (YYYY-MM-DD)"`
+	DueFrom       Date   `json:"due_from,omitempty" jsonschema:"Due on or after (YYYY-MM-DD)"`
+	DueTo         Date   `json:"due_to,omitempty" jsonschema:"Due on or before (YYYY-MM-DD)"`
 	Recurring     *bool  `json:"recurring,omitempty" jsonschema:"Only recurring (true) or one-off (false) invoices"`
 	InvoiceNumber string `json:"invoice_number,omitempty" jsonschema:"Only this invoice number"`
 }
@@ -80,7 +80,7 @@ type downloadInvoicePDFArgs struct {
 type downloadInvoiceAttachmentArgs struct {
 	InvoiceID    int64  `json:"invoice_id" jsonschema:"Invoice ID (see crunch_list_invoices)"`
 	AttachmentID int64  `json:"attachment_id" jsonschema:"Attachment ID within the invoice (see crunch_get_invoice)"`
-	FileName     string `json:"file_name,omitempty" jsonschema:"Attachment file name (looked up when omitted)"`
+	FileName     string `json:"filename,omitempty" jsonschema:"Attachment file name (looked up when omitted)"`
 	SaveTo       string `json:"save_to,omitempty" jsonschema:"Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR"`
 }
 
@@ -174,7 +174,7 @@ func summarizeInvoiceFull(i Obj) Obj {
 		}),
 		"credit_notes": crunch.List(i, "creditNotes"),
 		"attachments": mapItems(crunch.List(i, "attachments"), func(f Obj) Obj {
-			return Obj{"id": crunch.ID(f, "id"), "file_name": crunch.Str(f, "fileName")}
+			return Obj{"id": crunch.ID(f, "id"), "filename": crunch.Str(f, "fileName")}
 		}),
 	})
 	if v, ok := i["deletable"].(bool); ok {
@@ -208,6 +208,7 @@ func registerInvoices(c *Context) {
 		}
 		pa := a.PageArgs
 		pa.All = true
+		pa.MaxItems = fetchCap(a.Limit, true)
 		res, all, err := fetchPages(ctx, cl, "/invoices", crunch.Query{"clientId": a.ClientID}, pa, "issuedDate,desc")
 		if err != nil {
 			return nil, err

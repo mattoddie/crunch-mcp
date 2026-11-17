@@ -19,19 +19,40 @@ import (
 // PageArgs are the paging arguments of list tools over Spring-style paged endpoints.
 type PageArgs struct {
 	Page     *int   `json:"page,omitempty" jsonschema:"Page to fetch, starting at 0 (default 0)"`
-	Size     *int   `json:"size,omitempty" jsonschema:"Results per page, up to 200 (default 50)"`
+	PageSize *int   `json:"page_size,omitempty" jsonschema:"Results per page, up to 200 (default 50)"`
 	Sort     string `json:"sort,omitempty" jsonschema:"Sort order as field,asc or field,desc, for example postingDate,desc"`
-	All      bool   `json:"all,omitempty" jsonschema:"Fetch every page (up to max_items) instead of a single page"`
-	MaxItems *int   `json:"max_items,omitempty" jsonschema:"With all=true, stop after this many results (default 1000, at most 10000)"`
+	All      bool   `json:"all,omitempty" jsonschema:"Fetch every page (up to limit results, default 1000) instead of a single page"`
+	// MaxItems caps how many results All fetches (default 1000, at most maxPagedItems).
+	// It isn't an argument: list tools set it from limit (see fetchCap).
+	MaxItems *int `json:"-"`
 }
 
-// maxPagedItems caps max_items, so one call can't page through an unbounded number of results.
-const maxPagedItems = 10000
+const (
+	// defaultPagedItems is how many results all=true fetches when limit doesn't say.
+	defaultPagedItems = 1000
+	// maxPagedItems caps limit with all=true, so one call can't page through an unbounded number of results.
+	maxPagedItems = 10000
+)
+
+// fetchCap is how many results all=true fetches for a list's limit. Without a local
+// filter (search, or a filter applied here such as invoice status) it stops at limit;
+// with one, limit counts matches, so it fetches at least the default and filters those.
+func fetchCap(limit *int, filtering bool) *int {
+	n := defaultPagedItems
+	if limit != nil && *limit > 0 && (!filtering || *limit > n) {
+		n = *limit
+	}
+	n = min(n, maxPagedItems)
+	return &n
+}
 
 // fetchPaged fetches one page, or every page with All, maps the items and narrows
 // them with the list arguments. Without search, total is Crunch's count of every
 // match; with search, it counts the matches among the items fetched (searched).
 func fetchPaged(ctx context.Context, c *crunch.Client, path string, q crunch.Query, a PageArgs, l ListArgs, defaultSort string, mapFn func(Obj) Obj) (Obj, error) {
+	if a.MaxItems == nil {
+		a.MaxItems = fetchCap(l.Limit, strings.TrimSpace(l.Search) != "")
+	}
 	res, items, err := fetchPages(ctx, c, path, q, a, defaultSort)
 	if err != nil {
 		return nil, err
@@ -64,8 +85,8 @@ func fetchPages(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 	}
 	if !a.All {
 		size := 50
-		if a.Size != nil {
-			size = min(max(*a.Size, 1), 200)
+		if a.PageSize != nil {
+			size = min(max(*a.PageSize, 1), 200)
 		}
 		q["page"], q["size"] = page, size
 		var res Obj
@@ -87,7 +108,7 @@ func fetchPages(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 		}
 		return out, items, nil
 	}
-	maxItems := 1000
+	maxItems := defaultPagedItems
 	if a.MaxItems != nil && *a.MaxItems > 0 {
 		maxItems = min(*a.MaxItems, maxPagedItems)
 	}
@@ -115,7 +136,7 @@ func fetchPages(ctx context.Context, c *crunch.Client, path string, q crunch.Que
 	out := Obj{"total": total}
 	if len(items) > maxItems || !last {
 		out["truncated"] = true
-		out["note"] = fmt.Sprintf("Stopped at max_items=%d; raise it or narrow the filters to see the rest.", maxItems)
+		out["note"] = fmt.Sprintf("Stopped after fetching %d results; raise limit (up to 10000) or narrow the filters to see the rest.", maxItems)
 	}
 	if len(items) > maxItems {
 		items = items[:maxItems]
@@ -236,7 +257,7 @@ const (
 
 // Attachment is a file to upload.
 type Attachment struct {
-	FileName      string `json:"file_name" jsonschema:"File name including its extension, for example receipt.jpg"`
+	FileName      string `json:"filename" jsonschema:"File name including its extension, for example receipt.jpg"`
 	ContentBase64 string `json:"content_base64,omitempty" jsonschema:"The file as base64, or as a data URI (data:image/jpeg;base64,...)"`
 	FilePath      string `json:"file_path,omitempty" jsonschema:"Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR"`
 	MimeType      string `json:"mime_type,omitempty" jsonschema:"MIME type, for example image/jpeg (guessed from the file name when omitted)"`
@@ -308,7 +329,7 @@ func fileResult(c *Context, f *crunch.File, fallbackName, uri, saveTo string) (R
 	if mimeType == "" || mimeType == "application/octet-stream" {
 		mimeType = mimeTypeFor(name)
 	}
-	meta := Obj{"file_name": name, "mime_type": mimeType, "bytes": len(f.Data)}
+	meta := Obj{"filename": name, "mime_type": mimeType, "bytes": len(f.Data)}
 	if saveTo != "" {
 		saved, err := c.saveLocalFile(saveTo, name, f.Data)
 		if err != nil {

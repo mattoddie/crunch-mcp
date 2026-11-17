@@ -16,6 +16,7 @@ type expenseTypesArgs struct {
 }
 
 type vatTypesArgs struct {
+	ListArgs
 	For string `json:"for,omitempty" jsonschema:"Which list: expenses, invoices or both (default both)"`
 }
 
@@ -95,35 +96,35 @@ func registerReference(c *Context) {
 
 	add(c, Def{
 		Toolset: "reference", Name: "crunch_list_vat_types", Title: "List VAT types",
-		Description: "List the VAT types (rates) Crunch accepts, with their percentages. Expenses and invoices have separate lists; use the names exactly as shown (for example \"Standard\", \"Exempt\", \"Outside the Scope\"), not code-style values.",
+		Description: "List the VAT types (rates) Crunch accepts, with their percentages. Expenses and invoices have separate lists (each item's `for` says which); use the names exactly as shown (for example \"Standard\", \"Exempt\", \"Outside the Scope\"), not code-style values.",
 		Enums:       map[string][]string{"for": {"expenses", "invoices", "both"}},
 	}, func(ctx context.Context, a vatTypesArgs) (any, error) {
-		out := Obj{}
-		list := func(path string) ([]Obj, error) {
+		var items []Obj
+		list := func(path, kind string) error {
 			var res Obj
 			if err := cl.Get(ctx, path, nil, &res); err != nil {
-				return nil, err
+				return err
 			}
-			return mapItems(crunch.List(res, "vatTypes"), func(v Obj) Obj {
+			for _, v := range crunch.List(res, "vatTypes") {
 				name := crunch.Str(v, "displayName")
 				if name == "" {
 					name = crunch.Str(v, "name")
 				}
-				return crunch.Compact(Obj{"name": name, "percent": v["vatPercent"]})
-			}), nil
+				items = append(items, crunch.Compact(Obj{"name": name, "percent": v["vatPercent"], "for": kind}))
+			}
+			return nil
 		}
-		var err error
 		if a.For != "invoices" {
-			if out["expenses"], err = list("/expenses/vat-types"); err != nil {
+			if err := list("/expenses/vat-types", "expenses"); err != nil {
 				return nil, err
 			}
 		}
 		if a.For != "expenses" {
-			if out["invoices"], err = list("/invoices/vat-types"); err != nil {
+			if err := list("/invoices/vat-types", "invoices"); err != nil {
 				return nil, err
 			}
 		}
-		return out, nil
+		return a.result(items), nil
 	})
 
 	add(c, Def{

@@ -22,12 +22,12 @@ import (
 type ListArgs struct {
 	Search string   `json:"search,omitempty" jsonschema:"Case-insensitive substring match on any value"`
 	Fields []string `json:"fields,omitempty" jsonschema:"Keep only these fields (dot paths, such as supplier.companyName)"`
-	Limit  *int     `json:"limit,omitempty" jsonschema:"Maximum number of items"`
+	Limit  *int     `json:"limit,omitempty" jsonschema:"Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000)"`
 }
 
 // listHelp is the server instructions' explanation of the list arguments.
 const listHelp = "List tools take `search` (case-insensitive substring match on any text or number in an item), `fields` (keep only these fields in each item; dot paths like supplier.companyName with raw: true) and `limit`. " +
-	"On paged lists (page, size, all) they apply to what was fetched: one page, or every page with all=true. Use them to fetch only what you need. "
+	"On paged lists (page, page_size, all) they apply to what was fetched: one page, or every page with all=true (which stops after `limit` results, default 1000). Use them to fetch only what you need. "
 
 // result narrows items (already summarised) and wraps them as {total, returned, items}:
 // search first, then limit, then fields.

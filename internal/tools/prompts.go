@@ -29,7 +29,7 @@ var prompts = []prompt{
 			return `Give me a health check of my business from Crunch.
 1. crunch_get_overview: company, bank and card balances, invoice totals, open accounting periods.
 2. crunch_list_invoices (all: true): unpaid and overdue invoices (due date before today with an outstanding balance), grouped by customer, oldest first.
-3. crunch_list_expenses for the last 90 days (start_date): unpaid or part-paid bills, and expenses without a receipt (has_attachment: false).
+3. crunch_list_expenses for the last 90 days (from): unpaid or part-paid bills, and expenses without a receipt (has_attachment: false).
 4. crunch_list_bank_accounts: accounts with many unmatched statement entries (reconciliation backlog).
 Report: a one-line verdict, then cash position, money owed to me (with overdue detail), money I owe, and a short to-do list ordered by importance. Use GBP and keep healthy areas to one line. Don't change anything.`
 		},
@@ -64,15 +64,15 @@ Show me the drafts. Don't send anything or change any records unless I ask; if I
 		name: "expense_review", title: "Review expenses",
 		description: "Review a period's expenses for missing receipts, unpaid bills, odd categories and possible duplicates.",
 		args: []*mcp.PromptArgument{
-			{Name: "start_date", Description: "First day (YYYY-MM-DD; default three months ago)"},
-			{Name: "end_date", Description: "Last day (YYYY-MM-DD; default today)"},
+			{Name: "from", Description: "First day (YYYY-MM-DD; default three months ago)"},
+			{Name: "to", Description: "Last day (YYYY-MM-DD; default today)"},
 		},
 		text: func(a map[string]string) string {
 			return fmt.Sprintf(`Review my Crunch expenses from %s to %s.
 1. crunch_list_expenses (all: true) for the period.
 2. Look for: expenses without a receipt, unpaid or part-paid bills, possible duplicates (same supplier and amount within a few days), unusual expense types for the supplier, VAT that looks wrong (for example VAT on an Exempt or overseas supplier), and large or one-off items.
 3. Total spending by expense type and by supplier (top 10).
-Report findings as a prioritised list with the expense IDs, then the totals. Don't change anything.`, or(a["start_date"], "three months ago"), or(a["end_date"], "today"))
+Report findings as a prioritised list with the expense IDs, then the totals. Don't change anything.`, or(a["from"], "three months ago"), or(a["to"], "today"))
 		},
 	},
 	{
@@ -95,16 +95,16 @@ Report findings as a prioritised list with the expense IDs, then the totals. Don
 		name: "period_summary", title: "Period summary",
 		description: "Income, spending and cash summary for a month, quarter or year, for example to prepare for a VAT return or year end.",
 		args: []*mcp.PromptArgument{
-			{Name: "start_date", Description: "First day (YYYY-MM-DD)", Required: true},
-			{Name: "end_date", Description: "Last day (YYYY-MM-DD)", Required: true},
+			{Name: "from", Description: "First day (YYYY-MM-DD)", Required: true},
+			{Name: "to", Description: "Last day (YYYY-MM-DD)", Required: true},
 		},
 		text: func(a map[string]string) string {
 			return fmt.Sprintf(`Summarise my business in Crunch from %s to %s.
-1. Sales: crunch_get_invoice_totals with issued_from_date/issued_to_date, and crunch_list_invoices (all: true) for the invoices issued in the period: net, VAT and gross by customer.
-2. Spending: crunch_list_expenses (all: true, start_date/end_date): net, VAT and gross by expense type and top suppliers.
+1. Sales: crunch_get_invoice_totals with issued_from/issued_to, and crunch_list_invoices (all: true) for the invoices issued in the period: net, VAT and gross by customer.
+2. Spending: crunch_list_expenses (all: true, from/to): net, VAT and gross by expense type and top suppliers.
 3. Cash: crunch_list_bank_accounts for current balances.
 4. If the company is VAT registered (crunch_get_company_details), estimate output VAT on sales and input VAT on purchases for the period, and note the VAT scheme (flat rate schemes work differently). Make clear this is an estimate, not the VAT return.
-Present it as a short report with tables. Don't change anything.`, a["start_date"], a["end_date"])
+Present it as a short report with tables. Don't change anything.`, a["from"], a["to"])
 		},
 	},
 }
