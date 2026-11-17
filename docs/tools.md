@@ -35,33 +35,25 @@ Login status and the OAuth login flow, the logged-in user, company details (VAT 
 
 | Tool | Access | Summary |
 |---|---|---|
-| [`crunch_auth_complete`](#crunch_auth_complete) | 🟢 read | Finish Crunch login |
-| [`crunch_auth_start`](#crunch_auth_start) | 🟢 read | Start Crunch login |
-| [`crunch_auth_status`](#crunch_auth_status) | 🟢 read | Crunch login status |
+| [`crunch_complete_auth`](#crunch_complete_auth) | 🟢 read | Finish Crunch login |
+| [`crunch_get_auth_status`](#crunch_get_auth_status) | 🟢 read | Crunch login status |
 | [`crunch_get_company_details`](#crunch_get_company_details) | 🟢 read | Get company details |
 | [`crunch_get_overview`](#crunch_get_overview) | 🟢 read | Business overview |
 | [`crunch_get_user_details`](#crunch_get_user_details) | 🟢 read | Get user details |
+| [`crunch_start_auth`](#crunch_start_auth) | 🟢 read | Start Crunch login |
 
-### crunch_auth_complete
+### crunch_complete_auth
 
 🟢 read
 
-Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned.
+Finish a login started with crunch_start_auth by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_start_auth returned.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `redirected_url` | string | yes | The full URL from the browser's address bar after clicking Allow (it contains code= and state=), or just the code |
-| `state` | string |  | The state crunch_auth_start returned; only needed when redirected_url is just the code |
+| `state` | string |  | The state crunch_start_auth returned; only needed when redirected_url is just the code |
 
-### crunch_auth_start
-
-🟢 read
-
-Start logging this server in to a Crunch account (OAuth 2.0 with PKCE). Returns a URL for the user to open and approve. After they click Allow, the browser is sent to the redirect URI; if nothing is listening there the page fails to load, which is fine: ask the user to copy the full URL from the address bar and pass it to crunch_auth_complete. Logging in replaces the current tokens, possibly with a different Crunch account.
-
-_No arguments._
-
-### crunch_auth_status
+### crunch_get_auth_status
 
 🟢 read
 
@@ -73,7 +65,7 @@ _No arguments._
 
 🟢 read
 
-Get the business's details from Crunch: company name and number, VAT registration number, current VAT scheme (for example flat rate, with industry and limited cost trader status), and business and registered addresses.
+Get the company's registration details: company name and number, VAT registration number, the VAT scheme in force today (for example flat rate, with industry and limited cost trader status) and its history if it has changed, and business and registered addresses. crunch_get_overview includes these alongside balances and invoice totals; crunch_get_user_details is the logged-in person, not the company. raw=true returns the API object.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
@@ -92,6 +84,14 @@ _No arguments._
 🟢 read
 
 Get the logged-in Crunch user: ID, email address, first and last name.
+
+_No arguments._
+
+### crunch_start_auth
+
+🟢 read
+
+Start logging this server in to a Crunch account (OAuth 2.0 with PKCE). Returns a URL for the user to open and approve. After they click Allow, the browser is sent to the redirect URI; if nothing is listening there the page fails to load, which is fine: ask the user to copy the full URL from the address bar and pass it to crunch_complete_auth. Logging in replaces the current tokens, possibly with a different Crunch account.
 
 _No arguments._
 
@@ -305,7 +305,7 @@ Get one bank account in full: balance, account details, bank feed, unmatched sta
 
 🟢 read
 
-Get one credit card in full, including its opening balance.
+Get one credit card's full Crunch record (name, card number, balance, default and archived flags, unmatched statement entries) together with its opening balance. crunch_list_credit_cards gives a compact summary of every card. An unknown ID fails with HTTP 404.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
@@ -315,7 +315,7 @@ Get one credit card in full, including its opening balance.
 
 🟢 read
 
-Get the opening balances of bank accounts or credit cards, and whether each can still be edited.
+Get the opening balances (the balance each account started with in Crunch) of the given bank accounts, or of credit cards with type=credit_cards: for each account ID, the amount in GBP and whether it can still be edited. Take the IDs from crunch_list_bank_accounts or crunch_list_credit_cards; for a single card, crunch_get_credit_card already includes it.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
@@ -572,7 +572,7 @@ Delete a supplier. Only possible when it has no expenses (see `deletable`); arch
 
 🟢 read
 
-Get a supplier in full.
+Get one supplier's full Crunch record: company and contact name, default expense type, country, VAT number, whether it's archived and whether it can be deleted (not once it has expenses). crunch_list_suppliers already shows these fields for every supplier; use this for one supplier by ID. An unknown ID fails with HTTP 404.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
@@ -1110,7 +1110,7 @@ Get sales invoice totals: with no filters, everything invoiced and still outstan
 
 🟠 write · destructive
 
-Issue a draft sales invoice: it gets its invoice number and is posted to your accounts. This is final (correct mistakes afterwards with a credit note in Crunch). It does not email the customer; see crunch_email_invoice.
+Issue a draft sales invoice: it gets its invoice number and is posted to your accounts. This is final (correct mistakes afterwards with a credit note in Crunch). It does not email the customer; use crunch_email_invoice for that.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|

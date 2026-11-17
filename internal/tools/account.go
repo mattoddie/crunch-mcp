@@ -60,7 +60,7 @@ func summarizeCompany(c Obj) Obj {
 
 type authCompleteArgs struct {
 	RedirectedURL string `json:"redirected_url" jsonschema:"The full URL from the browser's address bar after clicking Allow (it contains code= and state=), or just the code"`
-	State         string `json:"state,omitempty" jsonschema:"The state crunch_auth_start returned; only needed when redirected_url is just the code"`
+	State         string `json:"state,omitempty" jsonschema:"The state crunch_start_auth returned; only needed when redirected_url is just the code"`
 }
 
 type rawArgs struct {
@@ -71,16 +71,16 @@ func registerAccount(c *Context) {
 	cl := c.Client
 
 	add(c, Def{
-		Toolset: "account", Name: "crunch_auth_status", Title: "Crunch login status",
+		Toolset: "account", Name: "crunch_get_auth_status", Title: "Crunch login status",
 		Description: "Show whether this server is logged in to Crunch: where the tokens come from, the granted scopes, when the access token expires and whether a refresh token is available. Never shows the tokens themselves.",
 	}, func(ctx context.Context, _ NoArgs) (any, error) {
 		return cl.Auth.Status(), nil
 	})
 
 	add(c, Def{
-		Toolset: "account", Name: "crunch_auth_start", Title: "Start Crunch login",
+		Toolset: "account", Name: "crunch_start_auth", Title: "Start Crunch login",
 		Description: "Start logging this server in to a Crunch account (OAuth 2.0 with PKCE). Returns a URL for the user to open and approve. After they click Allow, the browser is sent to the redirect URI; " +
-			"if nothing is listening there the page fails to load, which is fine: ask the user to copy the full URL from the address bar and pass it to crunch_auth_complete. " +
+			"if nothing is listening there the page fails to load, which is fine: ask the user to copy the full URL from the address bar and pass it to crunch_complete_auth. " +
 			"Logging in replaces the current tokens, possibly with a different Crunch account.",
 		ReadOnly: boolPtr(false), Destructive: boolPtr(false), Audited: true,
 	}, func(ctx context.Context, _ NoArgs) (any, error) {
@@ -90,13 +90,13 @@ func registerAccount(c *Context) {
 		}
 		return Obj{
 			"url": login.URL, "state": login.State, "redirect_uri": login.RedirectURI, "scopes": login.Scopes,
-			"next_step": "Open the URL, log in to Crunch and click Allow. Then copy the whole address your browser ends up on (it contains code=...) and call crunch_auth_complete with it within 15 minutes. The code can only be used once.",
+			"next_step": "Open the URL, log in to Crunch and click Allow. Then copy the whole address your browser ends up on (it contains code=...) and call crunch_complete_auth with it within 15 minutes. The code can only be used once.",
 		}, nil
 	})
 
 	add(c, Def{
-		Toolset: "account", Name: "crunch_auth_complete", Title: "Finish Crunch login",
-		Description: "Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned.",
+		Toolset: "account", Name: "crunch_complete_auth", Title: "Finish Crunch login",
+		Description: "Finish a login started with crunch_start_auth by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_start_auth returned.",
 		ReadOnly:    boolPtr(false), Destructive: boolPtr(false), Audited: true,
 	}, func(ctx context.Context, a authCompleteArgs) (any, error) {
 		res, err := cl.Auth.CompleteLogin(ctx, a.RedirectedURL, a.State)
@@ -121,7 +121,8 @@ func registerAccount(c *Context) {
 
 	add(c, Def{
 		Toolset: "account", Name: "crunch_get_company_details", Title: "Get company details",
-		Description: "Get the business's details from Crunch: company name and number, VAT registration number, current VAT scheme (for example flat rate, with industry and limited cost trader status), and business and registered addresses.",
+		Description: "Get the company's registration details: company name and number, VAT registration number, the VAT scheme in force today (for example flat rate, with industry and limited cost trader status) and its history if it has changed, and business and registered addresses. " +
+			"crunch_get_overview includes these alongside balances and invoice totals; crunch_get_user_details is the logged-in person, not the company. raw=true returns the API object.",
 	}, func(ctx context.Context, a rawArgs) (any, error) {
 		var res Obj
 		if err := cl.Get(ctx, "/company-details", nil, &res); err != nil {

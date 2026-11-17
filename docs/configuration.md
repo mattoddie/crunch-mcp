@@ -47,9 +47,9 @@ You do steps 2 and 3. There are three ways to start the flow and hand back the c
 |---|---|---|
 | `crunch-mcp login` on your computer | Run the binary in a terminal. It listens on `127.0.0.1:8976`, so the browser's redirect comes straight back to it. | Running the binary locally, or with stdio clients. |
 | `crunch-mcp login` in Docker | `docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login`. The container listens on port 8976, published only on the Docker host's loopback address. If your browser is on another machine, the redirect page fails to load. Copy the URL from the address bar and paste it into the terminal. | The compose setup. |
-| From the assistant | Ask it to *"log in to Crunch"*. It calls `crunch_auth_start`, which gives you the URL. After **Allow**, the redirect page fails to load (the running server doesn't listen on 8976). Paste the URL from the address bar into the chat, and it calls `crunch_auth_complete`. | Logging in, or switching account, without a terminal. The new tokens are used straight away. |
+| From the assistant | Ask it to *"log in to Crunch"*. It calls `crunch_start_auth`, which gives you the URL. After **Allow**, the redirect page fails to load (the running server doesn't listen on 8976). Paste the URL from the address bar into the chat, and it calls `crunch_complete_auth`. | Logging in, or switching account, without a terminal. The new tokens are used straight away. |
 
-The `login` command waits up to 15 minutes, and a login started with `crunch_auth_start` must be finished within 15 minutes by the same running server.
+The `login` command waits up to 15 minutes, and a login started with `crunch_start_auth` must be finished within 15 minutes by the same running server.
 
 > [!NOTE]
 > A running server notices when the token file changes, so you can log in again with the `login` command without restarting it. Logging in with the assistant doesn't need a restart either.
@@ -68,7 +68,7 @@ crunch-mcp asks only for what your settings need:
 | `CRUNCH_ALLOW_WRITES=true` | `read:all create:all update:all offline_access` |
 | `+ CRUNCH_ALLOW_DELETES=true` | `read:all create:all update:all delete:all offline_access` |
 
-Scopes are fixed when you log in. After you turn on writes or deletes, [log in again](#turning-on-writes) so the new login includes them. `crunch_auth_status` and `crunch-mcp status` show the scopes the current login has.
+Scopes are fixed when you log in. After you turn on writes or deletes, [log in again](#turning-on-writes) so the new login includes them. `crunch_get_auth_status` and `crunch-mcp status` show the scopes the current login has.
 
 ### Refresh tokens rotate
 
@@ -76,7 +76,7 @@ For API applications created since 14 January 2026, Crunch **rotates** refresh t
 
 - It writes the new refresh token to the token file **before** it uses the new access token, so a crash or restart never loses it. The file is replaced atomically and is readable only by its owner (mode `0600`).
 - It never runs two refreshes at once. Requests that arrive together wait for one refresh and share its result. Processes that share the token file (a server and `crunch-mcp login`, or two stdio sessions) take turns too: each holds an exclusive lock on `<token file>.lock` while it refreshes, and one that waited picks up the tokens the other saved instead of spending the old refresh token again.
-- If it can't save the file (for example, a read-only filesystem without a volume), it keeps working from memory and warns in the log and in `crunch_auth_status`. A restart would then need a new login.
+- If it can't save the file (for example, a read-only filesystem without a volume), it keeps working from memory and warns in the log and in `crunch_get_auth_status`. A restart would then need a new login.
 
 That leads to two rules:
 

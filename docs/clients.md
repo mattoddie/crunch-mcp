@@ -75,7 +75,7 @@ The easiest way is the **extension bundle**: a single `.mcpb` file that installs
 
 2. Double-click the file, or drag it onto **Settings → Extensions** in Claude Desktop, and click **Install**.
 3. Fill in the settings and turn the extension on. The tools appear under the tools (🔨) menu, and the prompts under the **+** menu. You can allow or block each tool separately there.
-4. Ask Claude to *"log in to Crunch"*. It uses `crunch_auth_start` and gives you a link. After you click **Allow**, the page it lands on fails to load: paste its address into the chat and Claude finishes the login with `crunch_auth_complete`. The tokens are saved in `~/.config/crunch-mcp/tokens.json`.
+4. Ask Claude to *"log in to Crunch"*. It uses `crunch_start_auth` and gives you a link. After you click **Allow**, the page it lands on fails to load: paste its address into the chat and Claude finishes the login with `crunch_complete_auth`. The tokens are saved in `~/.config/crunch-mcp/tokens.json`.
 
 To update, install the bundle from a newer release the same way.
 
@@ -137,7 +137,7 @@ Or, with the local binary:
 }
 ```
 
-Restart Claude Desktop. The tools appear under the tools (🔨) menu, and the prompts appear under **+ → Add from crunch**. If you haven't logged in yet, ask Claude to *"log in to Crunch"*: it uses `crunch_auth_start` and `crunch_auth_complete`, and you paste the redirected URL back into the chat.
+Restart Claude Desktop. The tools appear under the tools (🔨) menu, and the prompts appear under **+ → Add from crunch**. If you haven't logged in yet, ask Claude to *"log in to Crunch"*: it uses `crunch_start_auth` and `crunch_complete_auth`, and you paste the redirected URL back into the chat.
 
 To turn on writes, add `"-e", "CRUNCH_ALLOW_WRITES=true"` to `args` (or `"CRUNCH_ALLOW_WRITES": "true"` to `env` for the binary), then log in again so the login includes the extra scopes.
 
@@ -229,7 +229,7 @@ docker run -it --rm -p 127.0.0.1:8976:8976 \
   ghcr.io/mattoddie/crunch-mcp:latest login
 ```
 
-With the local binary, run `crunch-mcp login` with the same environment instead. The tokens go to `~/.config/crunch-mcp/tokens.json`. You can also log in from the chat with the `crunch_auth_start` tool.
+With the local binary, run `crunch-mcp login` with the same environment instead. The tokens go to `~/.config/crunch-mcp/tokens.json`. You can also log in from the chat with the `crunch_start_auth` tool.
 
 Tips:
 

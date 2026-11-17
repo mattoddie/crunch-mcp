@@ -92,7 +92,7 @@ Tokens saved to /data/tokens.json (scope: read:all offline_access).
 The authorisation code in that URL is single-use and only works with this login attempt, but don't share it anyway.
 
 > [!TIP]
-> There are two other ways to log in. You can run the `crunch-mcp` binary on your own computer with `crunch-mcp login`, or you can let the assistant do it with the `crunch_auth_start` and `crunch_auth_complete` tools: it gives you the URL, and you paste the redirected URL back into the chat. [How login works](configuration.md#how-login-works) explains all three.
+> There are two other ways to log in. You can run the `crunch-mcp` binary on your own computer with `crunch-mcp login`, or you can let the assistant do it with the `crunch_start_auth` and `crunch_complete_auth` tools: it gives you the URL, and you paste the redirected URL back into the chat. [How login works](configuration.md#how-login-works) explains all three.
 
 ## 4. Start the server
 
@@ -118,7 +118,7 @@ curl http://<docker-host>:8080/health
 ```
 
 > [!TIP]
-> `/health` only shows that the server is running. It doesn't contact Crunch. To check the login, run `docker compose exec crunch-mcp /crunch-mcp status`, or ask the assistant to call `crunch_auth_status`. Step 6 is the real test.
+> `/health` only shows that the server is running. It doesn't contact Crunch. To check the login, run `docker compose exec crunch-mcp /crunch-mcp status`, or ask the assistant to call `crunch_get_auth_status`. Step 6 is the real test.
 
 ## 5. Connect your assistant
 

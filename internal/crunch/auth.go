@@ -75,7 +75,7 @@ const (
 )
 
 // ErrNotLoggedIn is returned when there are no credentials at all.
-var ErrNotLoggedIn = errors.New("not logged in to Crunch. Run `crunch-mcp login` (or `docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login`), or use the crunch_auth_start tool")
+var ErrNotLoggedIn = errors.New("not logged in to Crunch. Run `crunch-mcp login` (or `docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login`), or use the crunch_start_auth tool")
 
 func fingerprint(token string) string {
 	sum := sha256.Sum256([]byte(token))
@@ -564,7 +564,7 @@ func (a *Auth) tokenRequest(ctx context.Context, form url.Values) (*tokenRespons
 		hint := ""
 		switch {
 		case form.Get("grant_type") == "refresh_token" && regexp.MustCompile(`(?i)invalid_grant|invalid_token|expired|revoked`).MatchString(reason):
-			hint = " The refresh token was rejected: it may have expired (they last 60 days), been revoked, or been used already. Log in again with `crunch-mcp login` or the crunch_auth_start tool."
+			hint = " The refresh token was rejected: it may have expired (they last 60 days), been revoked, or been used already. Log in again with `crunch-mcp login` or the crunch_start_auth tool."
 		case strings.Contains(strings.ToLower(reason), "invalid_client"):
 			hint = " Check CRUNCH_CLIENT_ID, and set CRUNCH_CLIENT_SECRET only if you were issued one (confidential client)."
 		case strings.Contains(strings.ToLower(reason), "redirect"):

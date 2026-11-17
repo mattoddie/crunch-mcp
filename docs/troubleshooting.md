@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Start with the logs: `docker compose logs crunch-mcp`. Configuration errors stop the server at startup with a clear message. Crunch errors show up in the tool results the assistant sees, and you can usually ask it *"what error did you get?"*. To check the login, run `docker compose exec crunch-mcp /crunch-mcp status` or ask the assistant to call `crunch_auth_status`.
+Start with the logs: `docker compose logs crunch-mcp`. Configuration errors stop the server at startup with a clear message. Crunch errors show up in the tool results the assistant sees, and you can usually ask it *"what error did you get?"*. To check the login, run `docker compose exec crunch-mcp /crunch-mcp status` or ask the assistant to call `crunch_get_auth_status`.
 
 - [The container keeps restarting](#the-container-keeps-restarting)
 - [The client can't connect to the server](#the-client-cant-connect-to-the-server)
@@ -55,10 +55,10 @@ Add `CRUNCH_CLIENT_ID` to `.env`. If you don't have one yet, see [Get API access
 Crunch has sent the browser to the redirect URI (`http://127.0.0.1:8976/callback` by default), and nothing on the browser's machine is answering. That's normal when:
 
 - Docker runs on another machine,
-- you started the login with `crunch_auth_start` (the running server doesn't listen on port 8976), or
+- you started the login with `crunch_start_auth` (the running server doesn't listen on port 8976), or
 - you forgot `-p 127.0.0.1:8976:8976` on `docker compose run`.
 
-The address bar already holds what crunch-mcp needs. Copy the whole URL (it contains `code=` and `state=`) and paste it into the terminal, or into the chat for `crunch_auth_complete`.
+The address bar already holds what crunch-mcp needs. Copy the whole URL (it contains `code=` and `state=`) and paste it into the terminal, or into the chat for `crunch_complete_auth`.
 
 **`Could not listen on 127.0.0.1:8976 for the redirect (…); paste the URL instead.`**
 
@@ -86,7 +86,7 @@ Crunch's token endpoint returns `404` when the request is malformed, for example
 
 **`this login link has expired or wasn't started by this server (the state doesn't match). Start again`**
 
-The URL you pasted belongs to a different login attempt. Each attempt has its own `state`, and it's only known to the process that started it. Common causes: you pasted a URL from an earlier attempt, the server restarted between `crunch_auth_start` and `crunch_auth_complete`, or you started with `crunch-mcp login` and finished in the chat (or the other way round). Start again and use the newest URL.
+The URL you pasted belongs to a different login attempt. Each attempt has its own `state`, and it's only known to the process that started it. Common causes: you pasted a URL from an earlier attempt, the server restarted between `crunch_start_auth` and `crunch_complete_auth`, or you started with `crunch-mcp login` and finished in the chat (or the other way round). Start again and use the newest URL.
 
 **`the login's state is missing …`**
 
@@ -102,7 +102,7 @@ Without `offline_access`, the login only lasts about an hour. Unset `CRUNCH_SCOP
 
 ## "Not logged in" and expired logins
 
-**`not logged in to Crunch. Run crunch-mcp login (or docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login), or use the crunch_auth_start tool`**
+**`not logged in to Crunch. Run crunch-mcp login (or docker compose run --rm -p 127.0.0.1:8976:8976 crunch-mcp login), or use the crunch_start_auth tool`**
 
 The server has no tokens. Either nobody has logged in, or the token file isn't where the server looks:
 
@@ -135,7 +135,7 @@ Access tokens last about an hour. Remove `CRUNCH_ACCESS_TOKEN` and log in proper
 
 Crunch understood the request but won't allow it. Two causes:
 
-- **Missing scope.** You turned on writes or deletes after logging in, so the login still only has `read:all`. Log in again (see [Turning on writes](configuration.md#turning-on-writes)) and check the new scopes with `crunch_auth_status`.
+- **Missing scope.** You turned on writes or deletes after logging in, so the login still only has `read:all`. Log in again (see [Turning on writes](configuration.md#turning-on-writes)) and check the new scopes with `crunch_get_auth_status`.
 - **Not a public endpoint.** Some endpoints the Crunch app uses, such as `/banking/statement-entries`, aren't part of the public API and always return `403`. This usually comes from the raw API tool. There's no workaround. See [Compatibility](compatibility.md#limits-of-the-crunch-api).
 
 ## Errors when creating or changing records

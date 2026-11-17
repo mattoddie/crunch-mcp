@@ -43,6 +43,36 @@ type Context struct {
 	// guarded holds the tools that change things: they take dry_run and are audited.
 	guarded map[string]guard
 	audit   *auditLog
+	// available holds every tool registered under these settings, found by a first pass
+	// over the definitions (probe), so descriptions can mention only tools that exist.
+	available map[string]bool
+	probe     bool
+}
+
+// ifTool returns text when the named tool is registered under the current settings and ""
+// otherwise. Descriptions use it to point at a tool behind another gate or toolset, so a
+// model is never sent to a tool it can't call.
+func (c *Context) ifTool(name, text string) string {
+	if c.available[name] {
+		return text
+	}
+	return ""
+}
+
+// enabled reports whether a tool in toolset with gate g is registered under the current settings.
+func (c *Context) enabled(toolset string, g Gate) bool {
+	if !c.Toolsets[toolset] {
+		return false
+	}
+	switch g {
+	case Write:
+		return c.AllowWrites
+	case Delete:
+		return c.AllowWrites && c.AllowDeletes
+	case Email:
+		return c.AllowWrites && c.AllowEmail
+	}
+	return true
 }
 
 // Info describes a registered tool.
@@ -209,22 +239,12 @@ func textResult(v any) *mcp.CallToolResult {
 
 // add registers a tool if its toolset and gate are enabled.
 func add[In any](c *Context, d Def, h func(ctx context.Context, in In) (any, error)) {
-	if !c.Toolsets[d.Toolset] {
+	if !c.enabled(d.Toolset, d.Gate) {
 		return
 	}
-	switch d.Gate {
-	case Write:
-		if !c.AllowWrites {
-			return
-		}
-	case Delete:
-		if !c.AllowWrites || !c.AllowDeletes {
-			return
-		}
-	case Email:
-		if !c.AllowWrites || !c.AllowEmail {
-			return
-		}
+	if c.probe {
+		c.available[d.Name] = true
+		return
 	}
 	readOnly := d.Gate == Read
 	if d.ReadOnly != nil {

@@ -2,6 +2,8 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -36,7 +38,7 @@ func TestGatesControlWhichToolsExist(t *testing.T) {
 			if !inRead {
 				t.Errorf("%s: read tool missing in read-only mode", name)
 			}
-			if tool := allTools[name]; !tool.Annotations.ReadOnlyHint && name != "crunch_api_request" && !strings.HasPrefix(name, "crunch_auth_") {
+			if tool := allTools[name]; !tool.Annotations.ReadOnlyHint && name != "crunch_api_request" && name != "crunch_start_auth" && name != "crunch_complete_auth" {
 				t.Errorf("%s: read tool without readOnlyHint", name)
 			}
 		case Write:
@@ -81,10 +83,47 @@ func TestSchemasDescribeEveryArgument(t *testing.T) {
 			t.Errorf("%s: missing title or description", name)
 		}
 		schema, _ := tool.InputSchema.(map[string]any)
-		props, _ := schema["properties"].(map[string]any)
-		for arg, p := range props {
-			if d, _ := p.(map[string]any)["description"].(string); d == "" {
-				t.Errorf("%s.%s has no description", name, arg)
+		checkArgDescriptions(t, name, schema)
+	}
+}
+
+// checkArgDescriptions requires a description on every property, including the fields of
+// nested objects and of array items.
+func checkArgDescriptions(t *testing.T, path string, schema map[string]any) {
+	t.Helper()
+	if items, ok := schema["items"].(map[string]any); ok {
+		checkArgDescriptions(t, path+"[]", items)
+	}
+	props, _ := schema["properties"].(map[string]any)
+	for arg, p := range props {
+		prop, _ := p.(map[string]any)
+		if d, _ := prop["description"].(string); d == "" {
+			t.Errorf("%s.%s has no description", path, arg)
+		}
+		checkArgDescriptions(t, path+"."+arg, prop)
+	}
+}
+
+// A description or argument that names a tool the client can't see is a dead end.
+func TestDescriptionsNameOnlyRegisteredTools(t *testing.T) {
+	all := config.AllTools()
+	readOnly := all
+	readOnly.AllowWrites, readOnly.AllowDeletes, readOnly.AllowEmail = false, false, false
+	writes := all
+	writes.AllowDeletes, writes.AllowEmail = false, false
+	deletes, email := writes, writes
+	deletes.AllowDeletes = true
+	email.AllowEmail = true
+	env := newEnv(t, readOnly)
+	toolRe := regexp.MustCompile(`\bcrunch_[a-z_]+`)
+	for label, o := range map[string]config.Tools{"read-only": readOnly, "writes": writes, "deletes": deletes, "email": email, "all": all} {
+		tools := toolNames(t, connect(t, env.client, o))
+		for name, tool := range tools {
+			schema, _ := json.Marshal(tool.InputSchema)
+			for _, ref := range toolRe.FindAllString(tool.Description+string(schema), -1) {
+				if _, ok := tools[ref]; !ok {
+					t.Errorf("%s: %s mentions %s, which isn't registered", label, name, ref)
+				}
 			}
 		}
 	}

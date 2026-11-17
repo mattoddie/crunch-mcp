@@ -37,15 +37,15 @@ func TestOverview(t *testing.T) {
 
 func TestAuthToolsLogIn(t *testing.T) {
 	env := newEnv(t)
-	start := env.obj("crunch_auth_start", nil)
+	start := env.obj("crunch_start_auth", nil)
 	challenge, state := challengeOfURL(t, start["url"].(string))
 	code := env.mock.IssueCode(challenge)
 	env.mock.On("GET", "/user-details", crunchtest.JSON(Obj{"email": "me@example.com", "firstName": "Sam", "lastName": "Smith"}))
-	res := env.obj("crunch_auth_complete", map[string]any{"redirected_url": "http://127.0.0.1:8976/callback?code=" + code + "&state=" + state})
+	res := env.obj("crunch_complete_auth", map[string]any{"redirected_url": "http://127.0.0.1:8976/callback?code=" + code + "&state=" + state})
 	if res["logged_in"] != true || res["account"].(Obj)["email"] != "me@example.com" {
 		t.Errorf("complete: %v", res)
 	}
-	st := env.obj("crunch_auth_status", nil)
+	st := env.obj("crunch_get_auth_status", nil)
 	if st["source"] != "token file" || st["has_refresh_token"] != true || strings.Contains(asJSON(t, st), "access-") {
 		t.Errorf("status (must not show tokens): %v", st)
 	}

@@ -162,12 +162,12 @@ func TestAuthToolsAreAudited(t *testing.T) {
 	o := config.AllTools()
 	o.AuditLog = file
 	env := newEnv(t, o)
-	start := env.obj("crunch_auth_start", nil)
+	start := env.obj("crunch_start_auth", nil)
 	challenge, state := challengeOfURL(t, start["url"].(string))
 	code := env.mock.IssueCode(challenge)
-	env.call("crunch_auth_complete", map[string]any{"redirected_url": "http://127.0.0.1:8976/callback?code=" + code + "&state=" + state})
+	env.call("crunch_complete_auth", map[string]any{"redirected_url": "http://127.0.0.1:8976/callback?code=" + code + "&state=" + state})
 	entries := readAudit(t, file)
-	if len(entries) != 2 || entries[0]["tool"] != "crunch_auth_start" || entries[1]["tool"] != "crunch_auth_complete" {
+	if len(entries) != 2 || entries[0]["tool"] != "crunch_start_auth" || entries[1]["tool"] != "crunch_complete_auth" {
 		t.Fatalf("entries: %v", entries)
 	}
 	b, _ := os.ReadFile(file)
