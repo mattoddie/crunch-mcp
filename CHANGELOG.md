@@ -6,6 +6,10 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-17
+
+This release renames arguments, a setting and list output to match the other mattoddie MCP servers ahead of 1.0. crunch-mcp has 74 tools (40 read, 24 write, 9 delete and 1 email) and 6 prompts. Read the **Breaking** entries before upgrading.
+
 ### Changed
 
 Argument, setting and output names now follow the conventions shared by the mattoddie MCP servers, ahead of 1.0. Nothing accepts the old names.
@@ -161,7 +165,8 @@ First release. It hasn't yet been tested against a live Crunch account, so expec
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code.
 
-[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.0...v0.4.1
