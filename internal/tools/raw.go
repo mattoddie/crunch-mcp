@@ -91,7 +91,7 @@ func registerRaw(c *Context) {
 	writes := c.AllowWrites && !c.RawReadOnly
 	desc := "Call any Crunch public API endpoint directly, for anything the other tools don't cover. `path` is relative to the API root and starts with the service: /banking, /clients, /company-details, /expenses, /immutable-data, /invoices or /user-details. "
 	if len(c.RawAllow) > 0 {
-		desc += "Only paths under " + strings.Join(c.RawAllow, ", ") + " are allowed (CRUNCH_RAW_ALLOW). "
+		desc += "Only paths under " + strings.Join(c.RawAllow, ", ") + " are allowed (CRUNCH_RAW_ALLOWED_PATHS). "
 	}
 	switch {
 	case !c.AllowWrites:
@@ -125,7 +125,7 @@ func registerRaw(c *Context) {
 			return nil, err
 		}
 		if !c.RawAllowed(canon) {
-			return nil, fmt.Errorf("%s is outside the paths this tool may use (CRUNCH_RAW_ALLOW=%s)", p, strings.Join(c.RawAllow, ","))
+			return nil, fmt.Errorf("%s is outside the paths this tool may use (CRUNCH_RAW_ALLOWED_PATHS=%s)", p, strings.Join(c.RawAllow, ","))
 		}
 		switch {
 		case method == "GET":

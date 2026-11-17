@@ -138,7 +138,7 @@ The input struct **is** the tool's argument schema:
 | Helper | Use it for |
 |---|---|
 | `ListArgs` and `a.result(items)` | Every list tool: embed `ListArgs` for `search`, `fields` and `limit`, summarise the items, and return `a.result(items)` for a consistent `{total, returned, items}`. |
-| `PageArgs` and `fetchPaged()` | List tools over Crunch's paged endpoints: `page`, `size`, `sort`, and `all` with `max_items`. Pass the tool's `ListArgs` too; they apply to the items fetched. |
+| `PageArgs` and `fetchPaged()` | List tools over Crunch's paged endpoints: `page`, `page_size`, `sort` and `all`. Pass the tool's `ListArgs` too: they apply to the items fetched, and with `all` its `limit` also caps how many are fetched. |
 | `deepMerge()` | Read-modify-write updates: merge the changes into the record fetched from Crunch. |
 | `set()` | Build a request body, skipping empty strings and nil pointers. |
 | `merge()` | Apply `extra` or `changes` (raw Crunch fields) last, so they override typed arguments. |

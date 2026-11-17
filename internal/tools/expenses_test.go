@@ -33,7 +33,7 @@ func TestListExpensesPagesAndSummarises(t *testing.T) {
 		page := r.Query.Get("page")
 		return 200, Obj{"content": []any{jsonObj(t, expenseFixture)}, "totalElements": 3, "totalPages": 3, "last": page == "2", "number": page}
 	})
-	res := env.obj("crunch_list_expenses", map[string]any{"start_date": "2026-01-01", "has_attachment": false, "supplier_id": 5})
+	res := env.obj("crunch_list_expenses", map[string]any{"from": "2026-01-01", "has_attachment": false, "supplier_id": 5})
 	q := env.mock.Last("GET").Query
 	if q.Get("startDate") != "2026-01-01" || q.Get("attachment") != "false" || q.Get("supplierId") != "5" || q.Get("sort") != "postingDate,desc" || q.Get("size") != "50" {
 		t.Errorf("query: %v", q)
@@ -53,9 +53,29 @@ func TestListExpensesPagesAndSummarises(t *testing.T) {
 	if env.mock.Last("GET").Query.Get("size") != "200" {
 		t.Error("all=true should use 200 per page")
 	}
-	capped := env.obj("crunch_list_expenses", map[string]any{"all": true, "max_items": 2})
+	capped := env.obj("crunch_list_expenses", map[string]any{"all": true, "limit": 2})
 	if num(capped["returned"]) != 2 || capped["truncated"] != true {
-		t.Errorf("max_items: %v", capped)
+		t.Errorf("limit: %v", capped)
+	}
+
+	env.call("crunch_list_expenses", map[string]any{"page": 1, "page_size": 10, "payment_from": "2026-02-01", "payment_to": "2026-02-28", "to": "2026-03-31"})
+	q = env.mock.Last("GET").Query
+	if q.Get("page") != "1" || q.Get("size") != "10" || q.Get("paymentStartDate") != "2026-02-01" || q.Get("paymentEndDate") != "2026-02-28" || q.Get("endDate") != "2026-03-31" {
+		t.Errorf("page_size and date windows: %v", q)
+	}
+}
+
+// With search, limit counts matches, so all=true fetches at least the default before filtering.
+func TestFetchCap(t *testing.T) {
+	n := func(v int) *int { return &v }
+	for _, c := range []struct {
+		limit     *int
+		filtering bool
+		want      int
+	}{{nil, false, 1000}, {n(5), false, 5}, {n(5), true, 1000}, {n(3000), true, 3000}, {n(99999), false, 10000}, {n(0), false, 1000}} {
+		if got := *fetchCap(c.limit, c.filtering); got != c.want {
+			t.Errorf("fetchCap(%v, %v) = %d, want %d", c.limit, c.filtering, got, c.want)
+		}
 	}
 }
 
@@ -70,7 +90,7 @@ func TestCreateExpenseBuildsBody(t *testing.T) {
 		"posting_date":  "2026-09-14",
 		"line_items":    []any{map[string]any{"expense_type": "ACCOUNTANCY", "description": "Monthly bookkeeping", "gross_amount": "120.00"}},
 		"payments":      []any{map[string]any{"date": "2026-09-14", "amount": 120, "bank_account_id": 11}},
-		"attachments":   []any{map[string]any{"file_name": "receipt.jpeg", "content_base64": img}},
+		"attachments":   []any{map[string]any{"filename": "receipt.jpeg", "content_base64": img}},
 	})
 	post := env.mock.Last("POST")
 	if post.Path != "/expenses" {
@@ -177,12 +197,12 @@ func TestUpdateExpenseMergesChanges(t *testing.T) {
 func TestExpenseAttachments(t *testing.T) {
 	env := newEnv(t)
 	env.mock.On("GET", "/expenses/77", func(crunchtest.Request, []string) (int, any) { return 200, jsonObj(t, expenseFixture) })
-	env.call("crunch_add_expense_attachment", map[string]any{"expense_id": 77, "attachments": []any{map[string]any{"file_name": "b.pdf", "content_base64": "data:application/pdf;base64,JVBERi0="}}})
+	env.call("crunch_add_expense_attachment", map[string]any{"expense_id": 77, "attachments": []any{map[string]any{"filename": "b.pdf", "content_base64": "data:application/pdf;base64,JVBERi0="}}})
 	files := env.mock.Last("PUT").Body.(Obj)["attachments"].([]any)
 	if len(files) != 2 || asJSON(t, files[1]) != `{"fileContents":"data:application/pdf;base64,JVBERi0=","fileName":"b.pdf","id":1}` {
 		t.Errorf("attachments: %s", asJSON(t, files))
 	}
-	if msg := env.callErr("crunch_add_expense_attachment", map[string]any{"expense_id": 77, "attachments": []any{map[string]any{"file_name": "x.png", "content_base64": "not base64!"}}}); !strings.Contains(msg, "not valid base64") {
+	if msg := env.callErr("crunch_add_expense_attachment", map[string]any{"expense_id": 77, "attachments": []any{map[string]any{"filename": "x.png", "content_base64": "not base64!"}}}); !strings.Contains(msg, "not valid base64") {
 		t.Errorf("bad base64: %s", msg)
 	}
 
@@ -223,14 +243,14 @@ func TestExpensesTotalAndTypes(t *testing.T) {
 	}
 }
 
-func TestMaxItemsIsCapped(t *testing.T) {
+func TestLimitIsCapped(t *testing.T) {
 	env := newEnv(t)
 	page := make([]any, 200)
 	for i := range page {
 		page[i] = Obj{"id": i}
 	}
 	env.mock.On("GET", "/expenses", crunchtest.JSON(Obj{"content": page, "last": false}))
-	res := env.obj("crunch_list_expenses", map[string]any{"all": true, "max_items": 1000000})
+	res := env.obj("crunch_list_expenses", map[string]any{"all": true, "limit": 1000000})
 	if num(res["returned"]) != 10000 || res["truncated"] != true {
 		t.Errorf("returned %v, truncated %v", res["returned"], res["truncated"])
 	}

@@ -6,6 +6,16 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+### Changed
+
+Argument, setting and output names now follow the conventions shared by the mattoddie MCP servers, ahead of 1.0. Nothing accepts the old names.
+
+- **Breaking:** `CRUNCH_RAW_ALLOW` is now `CRUNCH_RAW_ALLOWED_PATHS` (and the Claude Desktop extension's `raw_allow` setting is now `raw_allowed_paths`).
+- **Breaking:** the paged list tools (`crunch_list_expenses`, `crunch_list_invoices`, `crunch_list_recurring_expenses`, `crunch_list_bank_account_payments`) take `page_size` instead of `size`, and `max_items` is gone: with `all: true`, paging stops after `limit` results (default 1000, at most 10,000). With `search` (or `crunch_list_invoices`' `status`), `limit` counts matches, so at least 1000 results are fetched and filtered.
+- **Breaking:** date windows are `from`/`to`, or `<field>_from`/`<field>_to` for a window on a particular date: `crunch_list_expenses` takes `from`, `to`, `payment_from` and `payment_to` (was `start_date`, `end_date`, `payment_start_date`, `payment_end_date`); `crunch_list_credit_notes` and `crunch_get_vat_summary` take `from` and `to` (was `start_date`, `end_date`), and the VAT summary's result echoes them as `from` and `to`; `crunch_get_invoice_totals` takes `issued_from`, `issued_to`, `due_from` and `due_to` (was `issued_from_date`, `issued_to_date`, `due_from_date`, `due_to_date`). The `expense_review` and `period_summary` prompts take `from` and `to` (was `start_date`, `end_date`).
+- **Breaking:** file names are `filename`: in `crunch_download_expense_attachment` and `crunch_download_invoice_attachment` (was `file_name`), in the `attachments` of `crunch_create_expense`, `crunch_add_expense_attachment`, `crunch_create_invoice` and `crunch_add_invoice_attachment` (was `attachments[].file_name`), and in results (downloaded file details and attachment lists).
+- **Breaking:** `crunch_list_vat_types` returns `{total, returned, items}` like the other list tools, with a `for` field (`expenses` or `invoices`) on each item, instead of separate `expenses` and `invoices` lists. It now takes `search`, `fields` and `limit`.
+
 ## [0.5.0] - 2026-11-15
 
 crunch-mcp now has 74 tools in 10 toolsets, and 6 prompts. This release has breaking changes: see **Changed**.

@@ -31,7 +31,7 @@ func TestListCreditNotes(t *testing.T) {
 	if num(res["total"]) != 2 || num(items[0].(Obj)["id"]) != 2 || items[0].(Obj)["customer"] != "Example Customer Ltd" || len(items[0].(Obj)["refunds"].([]any)) != 1 {
 		t.Errorf("sales: %v", res)
 	}
-	res = env.obj("crunch_list_credit_notes", map[string]any{"for": "all", "end_date": "2026-09-30"})
+	res = env.obj("crunch_list_credit_notes", map[string]any{"for": "all", "to": "2026-09-30"})
 	got := asJSON(t, res["items"])
 	want := `[{"expense_id":77,"gross":12,"id":3,"net":10,"date":"2026-09-25","supplier":"Example Supplier Ltd","supplier_id":5,"type":"purchase","vat":2},` +
 		`{"amount":10,"customer":"Example Customer Ltd","customer_id":42,"date":"2026-09-20","id":1,"invoice_id":500,"lines":[{"amount":10,"description":"Discount"}],"state":"ISSUED","type":"sales"}]`

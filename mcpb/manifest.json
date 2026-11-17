@@ -33,7 +33,7 @@
         "CRUNCH_ALLOW_DELETES": "${user_config.allow_deletes}",
         "CRUNCH_ALLOW_EMAIL": "${user_config.allow_email}",
         "CRUNCH_TOOLSETS": "${user_config.toolsets}",
-        "CRUNCH_RAW_ALLOW": "${user_config.raw_allow}",
+        "CRUNCH_RAW_ALLOWED_PATHS": "${user_config.raw_allowed_paths}",
         "CRUNCH_RAW_READ_ONLY": "${user_config.raw_read_only}",
         "CRUNCH_FILES_DIR": "${user_config.files_dir}",
         "CRUNCH_AUDIT_LOG": "${user_config.audit_log}"
@@ -200,7 +200,7 @@
     },
     {
       "name": "crunch_list_vat_types",
-      "description": "List the VAT types (rates) Crunch accepts, with their percentages. Expenses and invoices have separate lists; use the names exactly as shown (for example \"Standard\", \"Exempt\", \"Outside the Scope\"), not code-style values."
+      "description": "List the VAT types (rates) Crunch accepts, with their percentages. Expenses and invoices have separate lists (each item's `for` says which); use the names exactly as shown (for example \"Standard\", \"Exempt\", \"Outside the Scope\"), not code-style values."
     }
   ],
   "tools_generated": true,
@@ -209,7 +209,7 @@
       "name": "business_health_check",
       "description": "A plain-English review of the business: cash in the bank, money owed to and by you, overdue invoices, unpaid bills and anything that needs attention.",
       "arguments": [],
-      "text": "Give me a health check of my business from Crunch.\n1. crunch_get_overview: company, bank and card balances, invoice totals, open accounting periods.\n2. crunch_list_invoices (all: true): unpaid and overdue invoices (due date before today with an outstanding balance), grouped by customer, oldest first.\n3. crunch_list_expenses for the last 90 days (start_date): unpaid or part-paid bills, and expenses without a receipt (has_attachment: false).\n4. crunch_list_bank_accounts: accounts with many unmatched statement entries (reconciliation backlog).\nReport: a one-line verdict, then cash position, money owed to me (with overdue detail), money I owe, and a short to-do list ordered by importance. Use GBP and keep healthy areas to one line. Don't change anything."
+      "text": "Give me a health check of my business from Crunch.\n1. crunch_get_overview: company, bank and card balances, invoice totals, open accounting periods.\n2. crunch_list_invoices (all: true): unpaid and overdue invoices (due date before today with an outstanding balance), grouped by customer, oldest first.\n3. crunch_list_expenses for the last 90 days (from): unpaid or part-paid bills, and expenses without a receipt (has_attachment: false).\n4. crunch_list_bank_accounts: accounts with many unmatched statement entries (reconciliation backlog).\nReport: a one-line verdict, then cash position, money owed to me (with overdue detail), money I owe, and a short to-do list ordered by importance. Use GBP and keep healthy areas to one line. Don't change anything."
     },
     {
       "name": "chase_overdue_invoices",
@@ -231,8 +231,8 @@
       "name": "expense_review",
       "description": "Review a period's expenses for missing receipts, unpaid bills, odd categories and possible duplicates.",
       "arguments": [
-        "start_date",
-        "end_date"
+        "from",
+        "to"
       ],
       "text": "Review my Crunch expenses from three months ago to today.\n1. crunch_list_expenses (all: true) for the period.\n2. Look for: expenses without a receipt, unpaid or part-paid bills, possible duplicates (same supplier and amount within a few days), unusual expense types for the supplier, VAT that looks wrong (for example VAT on an Exempt or overseas supplier), and large or one-off items.\n3. Total spending by expense type and by supplier (top 10).\nReport findings as a prioritised list with the expense IDs, then the totals. Don't change anything."
     },
@@ -249,10 +249,10 @@
       "name": "period_summary",
       "description": "Income, spending and cash summary for a month, quarter or year, for example to prepare for a VAT return or year end.",
       "arguments": [
-        "start_date",
-        "end_date"
+        "from",
+        "to"
       ],
-      "text": "Summarise my business in Crunch from ${arguments.start_date} to ${arguments.end_date}.\n1. Sales: crunch_get_invoice_totals with issued_from_date/issued_to_date, and crunch_list_invoices (all: true) for the invoices issued in the period: net, VAT and gross by customer.\n2. Spending: crunch_list_expenses (all: true, start_date/end_date): net, VAT and gross by expense type and top suppliers.\n3. Cash: crunch_list_bank_accounts for current balances.\n4. If the company is VAT registered (crunch_get_company_details), estimate output VAT on sales and input VAT on purchases for the period, and note the VAT scheme (flat rate schemes work differently). Make clear this is an estimate, not the VAT return.\nPresent it as a short report with tables. Don't change anything."
+      "text": "Summarise my business in Crunch from ${arguments.from} to ${arguments.to}.\n1. Sales: crunch_get_invoice_totals with issued_from/issued_to, and crunch_list_invoices (all: true) for the invoices issued in the period: net, VAT and gross by customer.\n2. Spending: crunch_list_expenses (all: true, from/to): net, VAT and gross by expense type and top suppliers.\n3. Cash: crunch_list_bank_accounts for current balances.\n4. If the company is VAT registered (crunch_get_company_details), estimate output VAT on sales and input VAT on purchases for the period, and note the VAT scheme (flat rate schemes work differently). Make clear this is an estimate, not the VAT return.\nPresent it as a short report with tables. Don't change anything."
     }
   ],
   "keywords": [
@@ -323,7 +323,7 @@
       "description": "Optional comma-separated list to expose fewer tools, e.g. account,reference,expenses,suppliers,banking. Empty means all except raw, which must be listed by name (e.g. all,raw).",
       "default": ""
     },
-    "raw_allow": {
+    "raw_allowed_paths": {
       "type": "string",
       "title": "Raw API paths",
       "description": "Optional comma-separated API path prefixes the raw API tool may use, e.g. /expenses,/invoices. Only matters when the raw toolset is listed in Toolsets. Empty allows every path.",

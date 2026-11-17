@@ -117,7 +117,7 @@ List the open accounting periods (financial years) with their start and end date
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_list_countries
@@ -129,7 +129,7 @@ List the countries Crunch knows, with the country codes to use in addresses and 
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_list_expense_types
@@ -143,7 +143,7 @@ List the expense types (categories) Crunch accepts in expenseType fields, for ex
 | `date` | string |  | Types valid on this date (YYYY-MM-DD; default today) |
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `include_deprecated` | boolean |  | Include deprecated types (default false) |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `raw` | boolean |  | Return the API response unchanged |
 | `search` | string |  | Case-insensitive substring match on any value |
 
@@ -158,7 +158,7 @@ List payment methods (for example EFT, CASH, DIRECTORS_EXPENSES) for recording e
 | `direction` | string |  | For invoices: the payment direction as Crunch names it (default INCOMING, money received from customers) |
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `for` | `"expenses"` \| `"invoices"` |  | Expense payments (default) or invoice (customer) payments |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `search` | string |  | Case-insensitive substring match on any value |
 
 ### crunch_list_persons
@@ -171,7 +171,7 @@ List the people (directors and employees) linked to the business on a date. Use 
 |---|---|---|---|
 | `date` | string |  | Date the people were in post (YYYY-MM-DD; default today) |
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `role` | string |  | Only people with this role, as Crunch names it (for example DIRECTOR) |
 | `search` | string |  | Case-insensitive substring match on any value |
 
@@ -179,11 +179,14 @@ List the people (directors and employees) linked to the business on a date. Use 
 
 🟢 read
 
-List the VAT types (rates) Crunch accepts, with their percentages. Expenses and invoices have separate lists; use the names exactly as shown (for example "Standard", "Exempt", "Outside the Scope"), not code-style values.
+List the VAT types (rates) Crunch accepts, with their percentages. Expenses and invoices have separate lists (each item's `for` says which); use the names exactly as shown (for example "Standard", "Exempt", "Outside the Scope"), not code-style values.
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
+| `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `for` | `"expenses"` \| `"invoices"` \| `"both"` |  | Which list: expenses, invoices or both (default both) |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
+| `search` | string |  | Case-insensitive substring match on any value |
 
 ## banking
 
@@ -329,14 +332,13 @@ List payments recorded in Crunch against a bank account (supplier payments, cust
 |---|---|---|---|
 | `bank_account_id` | integer | yes | Bank account ID (see crunch_list_bank_accounts) |
 | `reconciled` | boolean | yes | true for payments matched to bank statement entries, false for those still waiting to be reconciled |
-| `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
+| `all` | boolean |  | Fetch every page (up to limit results, default 1000) instead of a single page |
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
+| `page_size` | integer |  | Results per page, up to 200 (default 50) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `search` | string |  | Case-insensitive substring match on any value |
-| `size` | integer |  | Results per page, up to 200 (default 50) |
 | `sort` | string |  | Sort order as field,asc or field,desc, for example postingDate,desc |
 
 ### crunch_list_bank_accounts
@@ -348,7 +350,7 @@ List the business's bank accounts with their current balance, sort code and acco
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `search` | string |  | Case-insensitive substring match on any value |
 | `status` | `"active"` \| `"archived"` \| `"all"` |  | Which to list: active (default), archived or all |
@@ -362,7 +364,7 @@ List the business's credit cards with their balances, default flag and unmatched
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `search` | string |  | Case-insensitive substring match on any value |
 | `status` | `"active"` \| `"archived"` \| `"all"` |  | Which to list: active (default), archived or all |
@@ -500,7 +502,7 @@ List the business's clients (the customers you invoice) with email, payment term
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `search` | string |  | Case-insensitive substring match on any value |
 
@@ -586,7 +588,7 @@ List suppliers (who you buy from), with their default expense type, country and 
 |---|---|---|---|
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `include_archived` | boolean |  | Include archived suppliers (default false) |
-| `limit` | integer |  | Maximum number of items |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `name` | string |  | Exact company name to look up |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `search` | string |  | Case-insensitive substring match on any value |
@@ -635,7 +637,7 @@ Attach one or more files (receipts, invoices) to an existing expense. Existing a
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `attachments` | object[] | yes | Files to attach |
-| `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
+| `attachments[].filename` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
 | `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
@@ -678,7 +680,7 @@ Record an expense: who it was from, the date, one or more lines (expense type, V
 | `posting_date` | string | yes | Date of the expense or receipt (YYYY-MM-DD); must be in an open accounting period |
 | `allow_duplicate` | boolean |  | Create the expense even if one with the same supplier, date, gross amount and supplier reference already exists (default false: refuse, and name the existing expense) |
 | `attachments` | object[] |  | Receipts or invoices to attach |
-| `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
+| `attachments[].filename` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
 | `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
@@ -718,7 +720,7 @@ Download a receipt or other file attached to an expense. Images are returned so 
 |---|---|---|---|
 | `attachment_id` | integer | yes | Attachment ID within the expense (0, 1, 2...; see crunch_get_expense) |
 | `expense_id` | integer | yes | Expense ID (see crunch_list_expenses) |
-| `file_name` | string |  | Attachment file name (looked up when omitted) |
+| `filename` | string |  | Attachment file name (looked up when omitted) |
 | `save_to` | string |  | Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR |
 
 ### crunch_get_expense
@@ -741,14 +743,14 @@ Total the expenses matching the filters (gross amount, plus under- and over-paid
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `status` | string | yes | Expense status to total, as Crunch names it in the status field of expenses (see crunch_list_expenses) |
-| `end_date` | string |  | Expenses dated on or before (YYYY-MM-DD) |
 | `expense_type` | string |  | Only this expense type, for example TRAVEL_AND_SUBSISTENCE |
+| `from` | string |  | Expenses dated on or after (YYYY-MM-DD) |
 | `has_attachment` | boolean |  | Only expenses with (true) or without (false) a receipt attached |
-| `payment_end_date` | string |  | Paid on or before (YYYY-MM-DD) |
+| `payment_from` | string |  | Paid on or after (YYYY-MM-DD) |
 | `payment_method` | string |  | Only expenses paid this way, for example EFT |
-| `payment_start_date` | string |  | Paid on or after (YYYY-MM-DD) |
-| `start_date` | string |  | Expenses dated on or after (YYYY-MM-DD) |
+| `payment_to` | string |  | Paid on or before (YYYY-MM-DD) |
 | `supplier_id` | integer |  | Only this supplier's expenses |
+| `to` | string |  | Expenses dated on or before (YYYY-MM-DD) |
 
 ### crunch_list_expenses
 
@@ -758,23 +760,22 @@ List expenses (purchases, receipts and bills), newest first, filtered by supplie
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
-| `end_date` | string |  | Expenses dated on or before (YYYY-MM-DD) |
+| `all` | boolean |  | Fetch every page (up to limit results, default 1000) instead of a single page |
 | `expense_type` | string |  | Only this expense type, for example TRAVEL_AND_SUBSISTENCE |
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
+| `from` | string |  | Expenses dated on or after (YYYY-MM-DD) |
 | `has_attachment` | boolean |  | Only expenses with (true) or without (false) a receipt attached |
-| `limit` | integer |  | Maximum number of items |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
-| `payment_end_date` | string |  | Paid on or before (YYYY-MM-DD) |
+| `page_size` | integer |  | Results per page, up to 200 (default 50) |
+| `payment_from` | string |  | Paid on or after (YYYY-MM-DD) |
 | `payment_method` | string |  | Only expenses paid this way, for example EFT |
-| `payment_start_date` | string |  | Paid on or after (YYYY-MM-DD) |
+| `payment_to` | string |  | Paid on or before (YYYY-MM-DD) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `search` | string |  | Case-insensitive substring match on any value |
-| `size` | integer |  | Results per page, up to 200 (default 50) |
 | `sort` | string |  | Sort order as field,asc or field,desc, for example postingDate,desc |
-| `start_date` | string |  | Expenses dated on or after (YYYY-MM-DD) |
 | `supplier_id` | integer |  | Only this supplier's expenses |
+| `to` | string |  | Expenses dated on or before (YYYY-MM-DD) |
 
 ### crunch_remove_expense_payment
 
@@ -890,14 +891,13 @@ List recurring expenses (regular bills such as rent, phone or software subscript
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
+| `all` | boolean |  | Fetch every page (up to limit results, default 1000) instead of a single page |
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
+| `page_size` | integer |  | Results per page, up to 200 (default 50) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `search` | string |  | Case-insensitive substring match on any value |
-| `size` | integer |  | Results per page, up to 200 (default 50) |
 | `sort` | string |  | Sort order as field,asc or field,desc, for example postingDate,desc |
 
 ### crunch_update_recurring_expense
@@ -956,7 +956,7 @@ Attach files (for example timesheets) to a sales invoice. Existing attachments a
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `attachments` | object[] | yes | Files to attach (an invoice can have up to 5) |
-| `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
+| `attachments[].filename` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
 | `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
@@ -995,7 +995,7 @@ Create a draft sales invoice for a client: date, lines (description, unit price 
 | `items[].line_type` | string |  | Crunch's lineType (default S) |
 | `items[].quantity` | number \| string |  | Quantity (default 1), up to four decimal places |
 | `attachments` | object[] |  | Up to 5 files to attach |
-| `attachments[].file_name` | string | yes | File name including its extension, for example receipt.jpg |
+| `attachments[].filename` | string | yes | File name including its extension, for example receipt.jpg |
 | `attachments[].content_base64` | string |  | The file as base64, or as a data URI (data:image/jpeg;base64,...) |
 | `attachments[].file_path` | string |  | Instead of content_base64: path to a file in the server's CRUNCH_FILES_DIR (absolute, or relative to it). Only works when the server sets CRUNCH_FILES_DIR |
 | `attachments[].mime_type` | string |  | MIME type, for example image/jpeg (guessed from the file name when omitted) |
@@ -1031,7 +1031,7 @@ Download a file attached to a sales invoice. Attachment IDs and names come from 
 |---|---|---|---|
 | `attachment_id` | integer | yes | Attachment ID within the invoice (see crunch_get_invoice) |
 | `invoice_id` | integer | yes | Invoice ID (see crunch_list_invoices) |
-| `file_name` | string |  | Attachment file name (looked up when omitted) |
+| `filename` | string |  | Attachment file name (looked up when omitted) |
 | `save_to` | string |  | Also save the file in the server's CRUNCH_FILES_DIR: a directory (the file keeps its name) or a file path, absolute or relative to it. Existing files are never overwritten. Only works when the server sets CRUNCH_FILES_DIR |
 
 ### crunch_download_invoice_pdf
@@ -1098,11 +1098,11 @@ Get sales invoice totals: with no filters, everything invoiced and still outstan
 | Argument | Type | Required | Description |
 |---|---|---|---|
 | `client_id` | integer |  | Only this client's invoices |
-| `due_from_date` | string |  | Due on or after (YYYY-MM-DD) |
-| `due_to_date` | string |  | Due on or before (YYYY-MM-DD) |
+| `due_from` | string |  | Due on or after (YYYY-MM-DD) |
+| `due_to` | string |  | Due on or before (YYYY-MM-DD) |
 | `invoice_number` | string |  | Only this invoice number |
-| `issued_from_date` | string |  | Issued on or after (YYYY-MM-DD) |
-| `issued_to_date` | string |  | Issued on or before (YYYY-MM-DD) |
+| `issued_from` | string |  | Issued on or after (YYYY-MM-DD) |
+| `issued_to` | string |  | Issued on or before (YYYY-MM-DD) |
 | `recurring` | boolean |  | Only recurring (true) or one-off (false) invoices |
 | `status` | string |  | Only invoices with this status, as Crunch names it |
 
@@ -1125,15 +1125,14 @@ List sales invoices, newest first: number, customer, dates, status, amounts and 
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `all` | boolean |  | Fetch every page (up to max_items) instead of a single page |
+| `all` | boolean |  | Fetch every page (up to limit results, default 1000) instead of a single page |
 | `client_id` | integer |  | Only this client's invoices (see crunch_list_clients) |
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
-| `limit` | integer |  | Maximum number of items |
-| `max_items` | integer |  | With all=true, stop after this many results (default 1000, at most 10000) |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `page` | integer |  | Page to fetch, starting at 0 (default 0) |
+| `page_size` | integer |  | Results per page, up to 200 (default 50) |
 | `raw` | boolean |  | Return the full objects from the API instead of compact summaries (larger) |
 | `search` | string |  | Case-insensitive substring match on any value |
-| `size` | integer |  | Results per page, up to 200 (default 50) |
 | `sort` | string |  | Sort order as field,asc or field,desc, for example postingDate,desc |
 | `status` | string |  | Only invoices with this status, as shown in the status field (for example DRAFT); fetches all pages and filters them here |
 
@@ -1217,8 +1216,8 @@ Net, VAT and gross by VAT type for a period, for sales (issued invoices by issue
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `end_date` | string | yes | Last day of the period (YYYY-MM-DD) |
-| `start_date` | string | yes | First day of the period (YYYY-MM-DD), for example the start of a VAT quarter |
+| `from` | string | yes | First day of the period (YYYY-MM-DD), for example the start of a VAT quarter |
+| `to` | string | yes | Last day of the period (YYYY-MM-DD) |
 
 ### crunch_list_credit_notes
 
@@ -1228,12 +1227,12 @@ List credit notes: those issued against your sales invoices (for=invoices, the d
 
 | Argument | Type | Required | Description |
 |---|---|---|---|
-| `end_date` | string |  | Only credit notes dated on or before (YYYY-MM-DD) |
 | `fields` | string[] |  | Keep only these fields (dot paths, such as supplier.companyName) |
 | `for` | `"invoices"` \| `"expenses"` \| `"all"` |  | invoices (default: credit notes you issued against sales invoices), expenses (credit notes from suppliers) or all |
-| `limit` | integer |  | Maximum number of items |
+| `from` | string |  | Only credit notes dated on or after (YYYY-MM-DD) |
+| `limit` | integer |  | Maximum number of items to return. On paged lists with all=true, paging also stops after this many results (default 1000, at most 10000) |
 | `search` | string |  | Case-insensitive substring match on any value |
-| `start_date` | string |  | Only credit notes dated on or after (YYYY-MM-DD) |
+| `to` | string |  | Only credit notes dated on or before (YYYY-MM-DD) |
 
 ## raw
 
@@ -1288,8 +1287,8 @@ Review a period's expenses for missing receipts, unpaid bills, odd categories an
 
 | Argument | Required | Description |
 |---|---|---|
-| `start_date` |  | First day (YYYY-MM-DD; default three months ago) |
-| `end_date` |  | Last day (YYYY-MM-DD; default today) |
+| `from` |  | First day (YYYY-MM-DD; default three months ago) |
+| `to` |  | Last day (YYYY-MM-DD; default today) |
 
 ### period_summary
 
@@ -1297,8 +1296,8 @@ Income, spending and cash summary for a month, quarter or year, for example to p
 
 | Argument | Required | Description |
 |---|---|---|
-| `start_date` | yes | First day (YYYY-MM-DD) |
-| `end_date` | yes | Last day (YYYY-MM-DD) |
+| `from` | yes | First day (YYYY-MM-DD) |
+| `to` | yes | Last day (YYYY-MM-DD) |
 
 ### record_receipt
 

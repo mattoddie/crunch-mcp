@@ -12,8 +12,8 @@ import (
 )
 
 type vatSummaryArgs struct {
-	StartDate Date `json:"start_date" jsonschema:"First day of the period (YYYY-MM-DD), for example the start of a VAT quarter"`
-	EndDate   Date `json:"end_date" jsonschema:"Last day of the period (YYYY-MM-DD)"`
+	StartDate Date `json:"from" jsonschema:"First day of the period (YYYY-MM-DD), for example the start of a VAT quarter"`
+	EndDate   Date `json:"to" jsonschema:"Last day of the period (YYYY-MM-DD)"`
 }
 
 // maxVATInvoices caps how many invoices one VAT summary fetches in full (one request each).
@@ -124,7 +124,7 @@ func registerVATSummary(c *Context) {
 			"Use it to sense-check a VAT return; it is not one (Crunch's API has no VAT returns, and the Flat Rate Scheme and cash accounting work VAT out differently). Reads each invoice in the period, so long periods take a while.",
 	}, func(ctx context.Context, a vatSummaryArgs) (any, error) {
 		if a.EndDate < a.StartDate {
-			return nil, errors.New("end_date must not be before start_date")
+			return nil, errors.New("to must not be before from")
 		}
 		invoices, truncInv, err := allPages(ctx, cl, "/invoices", nil, "issuedDate,desc")
 		if err != nil {
@@ -186,7 +186,7 @@ func registerVATSummary(c *Context) {
 		delete(s, "vat_pence")
 		delete(p, "vat_pence")
 		out := Obj{
-			"start_date": a.StartDate, "end_date": a.EndDate, "sales": s, "purchases": p,
+			"from": a.StartDate, "to": a.EndDate, "sales": s, "purchases": p,
 			"vat_on_sales_minus_purchases": poundsFromPence(diff), "note": vatSummaryNote,
 		}
 		if salesCredits != 0 || purchaseCredits != 0 {

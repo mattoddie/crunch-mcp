@@ -50,7 +50,7 @@ type Tools struct {
 	// AuditLog is where calls of tools that change things are logged (CRUNCH_AUDIT_LOG):
 	// a file path, AuditLogStderr, or "" for no log.
 	AuditLog string
-	// RawAllow limits the raw API tool to these path prefixes (CRUNCH_RAW_ALLOW): canonical,
+	// RawAllow limits the raw API tool to these path prefixes (CRUNCH_RAW_ALLOWED_PATHS): canonical,
 	// lower-case paths such as /expenses, matched whole segment by segment. Empty allows any path.
 	RawAllow []string
 	// RawReadOnly keeps the raw API tool to reading even when writes are on (CRUNCH_RAW_READ_ONLY).
@@ -317,7 +317,7 @@ func Load(env Env) (*Config, error) {
 	if t.FilesDir, err = filesDir(get("CRUNCH_FILES_DIR")); err != nil {
 		return nil, err
 	}
-	if t.RawAllow, err = rawAllow(get("CRUNCH_RAW_ALLOW")); err != nil {
+	if t.RawAllow, err = rawAllow(get("CRUNCH_RAW_ALLOWED_PATHS")); err != nil {
 		return nil, err
 	}
 	if t.RawReadOnly, err = boolValue("CRUNCH_RAW_READ_ONLY", get("CRUNCH_RAW_READ_ONLY"), false); err != nil {
@@ -332,7 +332,7 @@ func Load(env Env) (*Config, error) {
 
 var rawPrefixRe = regexp.MustCompile(`^(/[a-z0-9_-]+)+$`)
 
-// rawAllow parses CRUNCH_RAW_ALLOW: comma-separated API path prefixes such as /expenses or
+// rawAllow parses CRUNCH_RAW_ALLOWED_PATHS: comma-separated API path prefixes such as /expenses or
 // /invoices, with or without /v1 and a trailing slash.
 func rawAllow(v string) ([]string, error) {
 	var out []string
@@ -345,7 +345,7 @@ func rawAllow(v string) ([]string, error) {
 			p = "/" + rest
 		}
 		if !rawPrefixRe.MatchString(p) {
-			return nil, fmt.Errorf("CRUNCH_RAW_ALLOW entries must be API paths such as /expenses or /invoices (letters, digits, - and _ between slashes), got %q", p)
+			return nil, fmt.Errorf("CRUNCH_RAW_ALLOWED_PATHS entries must be API paths such as /expenses or /invoices (letters, digits, - and _ between slashes), got %q", p)
 		}
 		out = append(out, p)
 	}
@@ -353,7 +353,7 @@ func rawAllow(v string) ([]string, error) {
 }
 
 // RawAllowed reports whether the raw API tool may use a canonical, lower-case path under
-// CRUNCH_RAW_ALLOW. A prefix matches whole segments: /invoices allows /invoices/1, not /invoices-x.
+// CRUNCH_RAW_ALLOWED_PATHS. A prefix matches whole segments: /invoices allows /invoices/1, not /invoices-x.
 func (t Tools) RawAllowed(canon string) bool {
 	if len(t.RawAllow) == 0 {
 		return true

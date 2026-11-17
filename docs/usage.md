@@ -132,9 +132,9 @@ The server includes six prompts. Each one is a ready-made, multi-step request th
 | `business_health_check` | | Reviews cash, money owed to and by you, overdue invoices, unpaid bills and missing receipts, and gives a short to-do list. |
 | `chase_overdue_invoices` | `days_overdue` (optional, default 1) | Finds overdue invoices, groups them by customer and drafts polite chasing emails. |
 | `record_receipt` | `details` | Turns a receipt, bill or description of a purchase into a correctly categorised expense, after showing you a summary. |
-| `expense_review` | `start_date`, `end_date` (both optional; default the last three months) | Looks for missing receipts, unpaid bills, possible duplicates, odd categories and suspicious VAT, with totals by type and supplier. |
+| `expense_review` | `from`, `to` (both optional; default the last three months) | Looks for missing receipts, unpaid bills, possible duplicates, odd categories and suspicious VAT, with totals by type and supplier. |
 | `create_invoice` | `client`, `work` | Finds or creates the client, picks the VAT rate, terms and bank account, and shows you the draft before creating it. |
-| `period_summary` | `start_date`, `end_date` | Sales, spending and cash for a period, with a VAT estimate if you're VAT registered. |
+| `period_summary` | `from`, `to` | Sales, spending and cash for a period, with a VAT estimate if you're VAT registered. |
 
 `business_health_check`, `expense_review` and `period_summary` tell the model not to change anything. `chase_overdue_invoices` only drafts emails unless you ask it to send them. `record_receipt` and `create_invoice` make changes only after you confirm, and need writes enabled to do so.
 
@@ -209,9 +209,9 @@ Files can be up to 10 MB each, and an invoice can have up to five. Crunch needs 
 ## Lists, paging and raw objects
 
 - **Compact by default.** List tools return trimmed summaries with the useful fields: names, dates, amounts, status and outstanding balances. Get tools return the full record.
-- **Paging.** Expenses, invoices, recurring expenses and bank account payments are paged by Crunch. List tools fetch one page of 50 by default (`page`, `size` up to 200 and `sort` change that). `all: true` fetches every page, up to `max_items` (default 1000, at most 10,000), and says when it stopped early.
-- **Narrowing.** Every list tool except `crunch_list_vat_types` returns `{total, returned, items}` and takes `search` (a case-insensitive match on any value in an item), `fields` (keep only these fields, with dot paths such as `supplier.companyName` for the nested fields of `raw: true` objects) and `limit`. On paged lists they apply to what was fetched: one page, or every page with `all: true`. With `search`, `total` counts the matches and `searched` says how many items were looked at.
-- **Filters** like `start_date`, `end_date`, `supplier_id`, `client_id`, `has_attachment` and `status` keep responses small. Totals tools (`crunch_get_expenses_total`, `crunch_get_invoice_totals`) answer *"how much"* without listing anything.
+- **Paging.** Expenses, invoices, recurring expenses and bank account payments are paged by Crunch. List tools fetch one page of 50 by default (`page`, `page_size` up to 200 and `sort` change that). `all: true` fetches every page, up to `limit` results (default 1000, at most 10,000), and says when it stopped early. With `search`, `limit` counts matches, so `all: true` fetches at least 1000 results and searches those.
+- **Narrowing.** Every list tool returns `{total, returned, items}` and takes `search` (a case-insensitive match on any value in an item), `fields` (keep only these fields, with dot paths such as `supplier.companyName` for the nested fields of `raw: true` objects) and `limit`. On paged lists they apply to what was fetched: one page, or every page with `all: true`. With `search`, `total` counts the matches and `searched` says how many items were looked at.
+- **Filters** like `from`, `to`, `supplier_id`, `client_id`, `has_attachment` and `status` keep responses small. Totals tools (`crunch_get_expenses_total`, `crunch_get_invoice_totals`) answer *"how much"* without listing anything.
 - **`raw: true`** on many list and get tools returns Crunch's full objects when you need a field the summary leaves out.
 - **IDs, not numbers.** Tools take Crunch's internal invoice ID, not the invoice number printed on it. The assistant finds the ID with `crunch_list_invoices` first.
 
@@ -228,7 +228,7 @@ Login tokens are never shown by any tool. `crunch_auth_status` reports where the
 | `+ CRUNCH_ALLOW_DELETES=true` | All, including `DELETE` |
 | `CRUNCH_RAW_READ_ONLY=true` | `GET`, whatever the other settings |
 
-`CRUNCH_RAW_ALLOW` limits it to the path prefixes you list, such as `/expenses,/invoices`.
+`CRUNCH_RAW_ALLOWED_PATHS` limits it to the path prefixes you list, such as `/expenses,/invoices`.
 
 `POST`, `PUT` and `DELETE` requests are only sent to the write endpoints of Crunch's documented public API; anything else is refused. A `POST` that creates a record must not have an `id` in its body. Without `CRUNCH_ALLOW_EMAIL`, it also refuses email and reminder endpoints and request bodies that turn on `sendReminders`. Without `CRUNCH_ALLOW_DELETES`, a `PUT` to an invoice, expense or recurring expense must send back all of its existing payments and attachments (the tool fetches the record to check). The path must be a plain, canonical API path: query parameters go in `query`, segments may only contain letters, digits, `-` and `_`, and a segment starting with a digit must be a plain number such as `123`.
 

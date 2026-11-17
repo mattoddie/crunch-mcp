@@ -93,7 +93,7 @@ func TestListInvoicesByStatusAndTotals(t *testing.T) {
 	if tot := env.obj("crunch_get_invoice_totals", nil); num(tot["outstanding"]) != 250 {
 		t.Errorf("totals: %v", tot)
 	}
-	tot := env.obj("crunch_get_invoice_totals", map[string]any{"issued_from_date": "2026-04-01", "issued_to_date": "2027-03-31"})
+	tot := env.obj("crunch_get_invoice_totals", map[string]any{"issued_from": "2026-04-01", "issued_to": "2027-03-31"})
 	if q := env.mock.Last("GET").Query; q.Get("issuedDateStart") != "2026-04-01" || q.Get("issuedDateEnd") != "2027-03-31" || num(tot["owed_to_you"]) != 100 {
 		t.Errorf("filtered totals: %v %v", q, tot)
 	}
@@ -127,7 +127,7 @@ func TestInvoiceAttachmentLimit(t *testing.T) {
 	inv := jsonObj(t, invoiceFixture)
 	inv["attachments"] = []any{Obj{"id": 0}, Obj{"id": 1}, Obj{"id": 2}, Obj{"id": 3}, Obj{"id": 4}}
 	env.mock.On("GET", "/invoices/500", crunchtest.JSON(inv))
-	msg := env.callErr("crunch_add_invoice_attachment", map[string]any{"invoice_id": 500, "attachments": []any{map[string]any{"file_name": "a.txt", "content_base64": "YQ=="}}})
+	msg := env.callErr("crunch_add_invoice_attachment", map[string]any{"invoice_id": 500, "attachments": []any{map[string]any{"filename": "a.txt", "content_base64": "YQ=="}}})
 	if !strings.Contains(msg, "at most 5") {
 		t.Errorf("limit: %s", msg)
 	}
