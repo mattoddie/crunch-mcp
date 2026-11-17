@@ -6,6 +6,10 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-17
+
+This release renames the auth tools verb-first, describes thin tools more fully and removes descriptions that pointed at tools turned off by the current settings. crunch-mcp has 74 tools (40 read, 24 write, 9 delete and 1 email) and 6 prompts. Read the **Breaking** entries before upgrading.
+
 ### Changed
 
 - **Breaking:** the login tools are named verb-first like the rest: `crunch_auth_start` is now `crunch_start_auth`, `crunch_auth_complete` is now `crunch_complete_auth` and `crunch_auth_status` is now `crunch_get_auth_status`. The old names are gone.
@@ -171,7 +175,8 @@ First release. It hasn't yet been tested against a live Crunch account, so expec
 - Multi-arch distroless Docker image (`linux/amd64`, `linux/arm64`) published to GHCR on each release, with SBOM and provenance attestation.
 - Documentation, including a tool reference generated from the code.
 
-[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/mattoddie/crunch-mcp/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/mattoddie/crunch-mcp/compare/v0.4.1...v0.4.2
