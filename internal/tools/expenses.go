@@ -406,7 +406,7 @@ func registerExpenses(c *Context) {
 	add(c, Def{
 		Toolset: "expenses", Name: "crunch_update_expense", Title: "Update expense",
 		Description: "Change an expense. The current expense is fetched and only what you pass changes: posting_date, supplier, reference, note, or line_items (which replace all lines). " +
-			"Payments and attachments are kept as they are; use crunch_add_expense_payment, crunch_remove_expense_payment and crunch_add_expense_attachment for those. Reconciled expenses and closed years can't be changed.",
+			"Payments and attachments are kept as they are; use crunch_add_expense_payment" + c.ifTool("crunch_remove_expense_payment", ", crunch_remove_expense_payment") + " and crunch_add_expense_attachment for those. Reconciled expenses and closed years can't be changed.",
 		Gate: Write, Idempotent: true,
 	}, func(ctx context.Context, a updateExpenseArgs) (any, error) {
 		if err := c.checkFields(a.Changes, false); err != nil {

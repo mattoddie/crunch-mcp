@@ -420,7 +420,7 @@ func registerInvoices(c *Context) {
 
 	add(c, Def{
 		Toolset: "invoices", Name: "crunch_issue_invoice", Title: "Issue invoice",
-		Description: "Issue a draft sales invoice: it gets its invoice number and is posted to your accounts. This is final (correct mistakes afterwards with a credit note in Crunch). It does not email the customer; see crunch_email_invoice.",
+		Description: "Issue a draft sales invoice: it gets its invoice number and is posted to your accounts. This is final (correct mistakes afterwards with a credit note in Crunch). It does not email the customer" + c.ifTool("crunch_email_invoice", "; use crunch_email_invoice for that") + ".",
 		Gate:        Write, Destructive: boolPtr(true),
 	}, func(ctx context.Context, a invoiceIDArgs) (any, error) {
 		var issued Obj

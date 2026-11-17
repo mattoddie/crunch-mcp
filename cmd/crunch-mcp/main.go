@@ -115,7 +115,7 @@ func serve() error {
 			writes += " (with email)"
 		}
 	}
-	login := "not logged in (use `crunch-mcp login` or the crunch_auth_start tool)"
+	login := "not logged in (use `crunch-mcp login` or the crunch_start_auth tool)"
 	if client.Auth.HasCredentials() {
 		login = "token file " + cfg.Crunch.TokenFile
 		if cfg.Crunch.AccessToken != "" {

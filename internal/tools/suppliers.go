@@ -92,7 +92,8 @@ func registerSuppliers(c *Context) {
 
 	add(c, Def{
 		Toolset: "suppliers", Name: "crunch_get_supplier", Title: "Get supplier",
-		Description: "Get a supplier in full.",
+		Description: "Get one supplier's full Crunch record: company and contact name, default expense type, country, VAT number, whether it's archived and whether it can be deleted (not once it has expenses). " +
+			"crunch_list_suppliers already shows these fields for every supplier; use this for one supplier by ID. An unknown ID fails with HTTP 404.",
 	}, func(ctx context.Context, a supplierIDArgs) (any, error) {
 		var out any
 		return out, cl.Get(ctx, path("/expenses/suppliers/%d", a.SupplierID), nil, &out)

@@ -47,16 +47,8 @@
   },
   "tools": [
     {
-      "name": "crunch_auth_complete",
-      "description": "Finish a login started with crunch_auth_start by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_auth_start returned."
-    },
-    {
-      "name": "crunch_auth_start",
-      "description": "Start logging this server in to a Crunch account (OAuth 2.0 with PKCE). Returns a URL for the user to open and approve. After they click Allow, the browser is sent to the redirect URI; if nothing is listening there the page fails to load, which is fine: ask the user to copy the full URL from the address bar and pass it to crunch_auth_complete. Logging in replaces the current tokens, possibly with a different Crunch account."
-    },
-    {
-      "name": "crunch_auth_status",
-      "description": "Show whether this server is logged in to Crunch: where the tokens come from, the granted scopes, when the access token expires and whether a refresh token is available. Never shows the tokens themselves."
+      "name": "crunch_complete_auth",
+      "description": "Finish a login started with crunch_start_auth by exchanging the authorisation code for tokens, which are saved to the token file. Pass the full URL the browser was redirected to, or just the code together with the state crunch_start_auth returned."
     },
     {
       "name": "crunch_download_expense_attachment",
@@ -79,6 +71,10 @@
       "description": "Who owes the business money and for how long: the outstanding balance of every issued sales invoice, grouped by days past its due date (current, 1-30, 31-60, 61-90 and over 90 days) and by customer, largest first. Drafts are left out. Reads every invoice, so it can take a few seconds on a large account. details=true also lists each invoice."
     },
     {
+      "name": "crunch_get_auth_status",
+      "description": "Show whether this server is logged in to Crunch: where the tokens come from, the granted scopes, when the access token expires and whether a refresh token is available. Never shows the tokens themselves."
+    },
+    {
       "name": "crunch_get_bank_account",
       "description": "Get one bank account in full: balance, account details, bank feed, unmatched statement entries and whether it can be edited, archived or deleted."
     },
@@ -88,11 +84,11 @@
     },
     {
       "name": "crunch_get_company_details",
-      "description": "Get the business's details from Crunch: company name and number, VAT registration number, current VAT scheme (for example flat rate, with industry and limited cost trader status), and business and registered addresses."
+      "description": "Get the company's registration details: company name and number, VAT registration number, the VAT scheme in force today (for example flat rate, with industry and limited cost trader status) and its history if it has changed, and business and registered addresses. crunch_get_overview includes these alongside balances and invoice totals; crunch_get_user_details is the logged-in person, not the company. raw=true returns the API object."
     },
     {
       "name": "crunch_get_credit_card",
-      "description": "Get one credit card in full, including its opening balance."
+      "description": "Get one credit card's full Crunch record (name, card number, balance, default and archived flags, unmatched statement entries) together with its opening balance. crunch_list_credit_cards gives a compact summary of every card. An unknown ID fails with HTTP 404."
     },
     {
       "name": "crunch_get_default_invoice_note",
@@ -120,7 +116,7 @@
     },
     {
       "name": "crunch_get_opening_balances",
-      "description": "Get the opening balances of bank accounts or credit cards, and whether each can still be edited."
+      "description": "Get the opening balances (the balance each account started with in Crunch) of the given bank accounts, or of credit cards with type=credit_cards: for each account ID, the amount in GBP and whether it can still be edited. Take the IDs from crunch_list_bank_accounts or crunch_list_credit_cards; for a single card, crunch_get_credit_card already includes it."
     },
     {
       "name": "crunch_get_overview",
@@ -132,7 +128,7 @@
     },
     {
       "name": "crunch_get_supplier",
-      "description": "Get a supplier in full."
+      "description": "Get one supplier's full Crunch record: company and contact name, default expense type, country, VAT number, whether it's archived and whether it can be deleted (not once it has expenses). crunch_list_suppliers already shows these fields for every supplier; use this for one supplier by ID. An unknown ID fails with HTTP 404."
     },
     {
       "name": "crunch_get_user_details",
@@ -201,6 +197,10 @@
     {
       "name": "crunch_list_vat_types",
       "description": "List the VAT types (rates) Crunch accepts, with their percentages. Expenses and invoices have separate lists (each item's `for` says which); use the names exactly as shown (for example \"Standard\", \"Exempt\", \"Outside the Scope\"), not code-style values."
+    },
+    {
+      "name": "crunch_start_auth",
+      "description": "Start logging this server in to a Crunch account (OAuth 2.0 with PKCE). Returns a URL for the user to open and approve. After they click Allow, the browser is sent to the redirect URI; if nothing is listening there the page fails to load, which is fine: ask the user to copy the full URL from the address bar and pass it to crunch_complete_auth. Logging in replaces the current tokens, possibly with a different Crunch account."
     }
   ],
   "tools_generated": true,

@@ -15,7 +15,7 @@ var Version = "0.0.0-dev"
 
 func instructions(opts config.Tools) string {
 	s := "Tools for Crunch Accounting (UK online accounting for freelancers, contractors and small limited companies): expenses and receipts, suppliers, recurring expenses, sales invoices, clients (customers), bank accounts, credit cards and company details. " +
-		"Start with crunch_get_overview for a snapshot of the business. If a tool says the server isn't logged in, use crunch_auth_start and crunch_auth_complete. " +
+		"Start with crunch_get_overview for a snapshot of the business. If a tool says the server isn't logged in, use crunch_start_auth and crunch_complete_auth. " +
 		"Amounts are in GBP. Look up valid values before creating records: crunch_list_expense_types, crunch_list_vat_types, crunch_list_payment_methods, crunch_list_bank_accounts, crunch_list_suppliers and crunch_list_clients. " +
 		"List tools return compact summaries as {total, returned, items}; get tools return full records. " + listHelp
 	if opts.AllowWrites {
@@ -34,8 +34,16 @@ func instructions(opts config.Tools) string {
 // registered, when non-nil, is filled with each tool's toolset and gate.
 func NewServer(client *crunch.Client, opts config.Tools, registered map[string]Info) *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: Name, Version: Version}, &mcp.ServerOptions{Instructions: instructions(opts)})
-	c := &Context{Server: s, Client: client, Tools: opts, Registered: registered, guarded: map[string]guard{}, audit: newAuditLog(opts.AuditLog)}
+	probe := &Context{Client: client, Tools: opts, available: map[string]bool{}, probe: true}
+	registerTools(probe)
+	c := &Context{Server: s, Client: client, Tools: opts, Registered: registered, guarded: map[string]guard{}, audit: newAuditLog(opts.AuditLog), available: probe.available}
 	s.AddReceivingMiddleware(c.guardMiddleware)
+	registerTools(c)
+	registerPrompts(s)
+	return s
+}
+
+func registerTools(c *Context) {
 	registerAccount(c)
 	registerReference(c)
 	registerBanking(c)
@@ -46,6 +54,4 @@ func NewServer(client *crunch.Client, opts config.Tools, registered map[string]I
 	registerInvoices(c)
 	registerReports(c)
 	registerRaw(c)
-	registerPrompts(s)
-	return s
 }

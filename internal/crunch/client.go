@@ -361,7 +361,7 @@ func firstString(m map[string]any, keys ...string) string {
 func hint(status int, method string) string {
 	switch {
 	case status == http.StatusUnauthorized:
-		return " The access token was rejected. Log in again with `crunch-mcp login` or the crunch_auth_start tool."
+		return " The access token was rejected. Log in again with `crunch-mcp login` or the crunch_start_auth tool."
 	case status == http.StatusForbidden:
 		scope := map[string]string{"GET": "read:all", "POST": "create:all", "PUT": "update:all", "DELETE": "delete:all"}[method]
 		return fmt.Sprintf(" Crunch refused this request. The login may not include the %s scope (log in again after enabling the matching CRUNCH_ALLOW_* setting), or the endpoint isn't part of the public API.", scope)

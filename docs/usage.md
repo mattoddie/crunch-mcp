@@ -215,7 +215,7 @@ Files can be up to 10 MB each, and an invoice can have up to five. Crunch needs 
 - **`raw: true`** on many list and get tools returns Crunch's full objects when you need a field the summary leaves out.
 - **IDs, not numbers.** Tools take Crunch's internal invoice ID, not the invoice number printed on it. The assistant finds the ID with `crunch_list_invoices` first.
 
-Login tokens are never shown by any tool. `crunch_auth_status` reports where they come from and when they expire, but not the tokens themselves.
+Login tokens are never shown by any tool. `crunch_get_auth_status` reports where they come from and when they expire, but not the tokens themselves.
 
 ## The raw API tool
 

@@ -28,7 +28,7 @@ func TestDryRunArgumentOnlyOnToolsThatChangeThings(t *testing.T) {
 	for name, tool := range toolNames(t, env.session) {
 		props, _ := tool.InputSchema.(map[string]any)["properties"].(map[string]any)
 		_, has := props["dry_run"]
-		if want := !tool.Annotations.ReadOnlyHint && !strings.HasPrefix(name, "crunch_auth_") && !strings.HasPrefix(name, "crunch_download_"); has != want {
+		if want := !tool.Annotations.ReadOnlyHint && name != "crunch_start_auth" && name != "crunch_complete_auth" && !strings.HasPrefix(name, "crunch_download_"); has != want {
 			t.Errorf("%s: dry_run argument %v, want %v", name, has, want)
 		}
 	}

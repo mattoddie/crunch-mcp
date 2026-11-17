@@ -155,8 +155,9 @@ func registerBanking(c *Context) {
 
 	add(c, Def{
 		Toolset: "banking", Name: "crunch_get_opening_balances", Title: "Get opening balances",
-		Description: "Get the opening balances of bank accounts or credit cards, and whether each can still be edited.",
-		Enums:       map[string][]string{"type": {"bank_accounts", "credit_cards"}},
+		Description: "Get the opening balances (the balance each account started with in Crunch) of the given bank accounts, or of credit cards with type=credit_cards: for each account ID, the amount in GBP and whether it can still be edited. " +
+			"Take the IDs from crunch_list_bank_accounts or crunch_list_credit_cards; for a single card, crunch_get_credit_card already includes it.",
+		Enums: map[string][]string{"type": {"bank_accounts", "credit_cards"}},
 	}, func(ctx context.Context, a openingBalancesArgs) (any, error) {
 		if len(a.AccountIDs) == 0 {
 			return nil, errors.New("give at least one account ID")
@@ -265,7 +266,7 @@ func registerBanking(c *Context) {
 
 	add(c, Def{
 		Toolset: "banking", Name: "crunch_get_credit_card", Title: "Get credit card",
-		Description: "Get one credit card in full, including its opening balance.",
+		Description: "Get one credit card's full Crunch record (name, card number, balance, default and archived flags, unmatched statement entries) together with its opening balance. crunch_list_credit_cards gives a compact summary of every card. An unknown ID fails with HTTP 404.",
 	}, func(ctx context.Context, a creditCardIDArgs) (any, error) {
 		var card Obj
 		if err := cl.Get(ctx, path("/banking/credit-cards/%d", a.CreditCardID), nil, &card); err != nil {

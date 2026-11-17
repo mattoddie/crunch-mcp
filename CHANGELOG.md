@@ -6,6 +6,12 @@ For crunch-mcp, the "public API" is the set of tool names, their arguments, the 
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** the login tools are named verb-first like the rest: `crunch_auth_start` is now `crunch_start_auth`, `crunch_auth_complete` is now `crunch_complete_auth` and `crunch_auth_status` is now `crunch_get_auth_status`. The old names are gone.
+- Clearer descriptions for `crunch_get_supplier`, `crunch_get_company_details`, `crunch_get_opening_balances` and `crunch_get_credit_card`: what they return and how they differ from the related tools.
+- Tool descriptions only name tools that are available: `crunch_update_expense` no longer points at `crunch_remove_expense_payment` without delete access, nor `crunch_issue_invoice` at `crunch_email_invoice` without email access.
+
 ## [0.6.0] - 2026-11-17
 
 This release renames arguments, a setting and list output to match the other mattoddie MCP servers ahead of 1.0. crunch-mcp has 74 tools (40 read, 24 write, 9 delete and 1 email) and 6 prompts. Read the **Breaking** entries before upgrading.
