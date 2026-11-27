@@ -483,6 +483,7 @@ const connectSnippet = `claude mcp add --transport http crunch \\
             Run it once and share it, or start it per session with <code>docker run -i</code>. You can even log in from the chat with
             the auth tools.
             On Claude Desktop, install the one-click bundle from the <a href={`${GITHUB}/releases/latest`}>latest release</a>.
+            No Docker? Install it with <a href="/docs/deployment/#with-homebrew">Homebrew</a>.
             <a href="/docs/clients/">Client setup →</a>
           </p>
         </div>
@@ -510,6 +511,7 @@ const connectSnippet = `claude mcp add --transport http crunch \\
               <button class="copy" data-copy={composeSnippet} aria-label="Copy commands">Copy</button>
               <pre><code>{composeSnippet}</code></pre>
             </div>
+            <p class="muted">No Docker? On macOS or Linux, run <code>brew install mattoddie/tap/crunch-mcp</code>. <a href="/docs/deployment/#running-without-docker">Running without Docker →</a></p>
           </li>
           <li>
             <span class="num">3</span>
